@@ -5,10 +5,13 @@ extends Node3D
 @export var listen_port: int = 12345
 @export var connect_address: String = "127.0.0.1"
 @export var tick_rate: float = 30.0
+@export var rtt_ms_setting: int = 0
 @export var input_latency_ms: int = 0
 @export var snapshot_latency_ms: int = 0
 @export var jitter_ms: int = 0
 @export var loss_percent: float = 0.0
+@export var input_delay_ticks: int = 0
+@export var ping_interval_ms: int = 1000
 
 var ready_peers: Dictionary = {}
 var peer_inputs: Dictionary = {}
@@ -20,11 +23,18 @@ var tick_delta: float = 1.0 / 30.0
 var input_queue: Array[Dictionary] = []
 var snapshot_queue: Array[Dictionary] = []
 var input_history: Array[Dictionary] = []
+var send_queue: Array[Dictionary] = []
+var rtt_ms: float = 0.0
+var last_ping_ms: int = 0
+var ping_seq: int = 0
+var ping_out_queue: Array[Dictionary] = []
+var ping_response_queue: Array[Dictionary] = []
 
 func _ready() -> void:
 	add_to_group("network_bootstrap")
 	rng.randomize()
 	tick_delta = 1.0 / tick_rate
+	_set_rtt_ms(rtt_ms_setting)
 	if OS.get_cmdline_args().has("--server"):
 		_start_server()
 	else:
@@ -42,6 +52,26 @@ func _physics_process(delta: float) -> void:
 			_server_tick(tick_id)
 		else:
 			_client_tick(tick_id)
+
+func _process(_delta: float) -> void:
+	if multiplayer.multiplayer_peer == null:
+		return
+	var now: int = Time.get_ticks_msec()
+	if multiplayer.is_server():
+		_process_ping_response_queue(now)
+		return
+	_process_ping_send_queue(now)
+	if now - last_ping_ms >= ping_interval_ms:
+		last_ping_ms = now
+		ping_seq += 1
+		if _should_drop():
+			return
+		var send_at: int = now + _latency_ms(input_latency_ms)
+		ping_out_queue.append({
+			"time_ms": send_at,
+			"client_time_ms": now,
+			"seq": ping_seq
+		})
 
 func _start_server() -> void:
 	var peer: ENetMultiplayerPeer = ENetMultiplayerPeer.new()
@@ -88,16 +118,38 @@ func _client_tick(current_tick: int) -> void:
 	var local_player: PlayerController = _get_local_player()
 	if not local_player:
 		return
+	_flush_send_queue(current_tick)
 	var input_dir: Vector2 = local_player.build_input()
 	var yaw: float = local_player.get_yaw()
-	var entry := {
+	var entry: Dictionary = {
 		"tick": current_tick,
 		"input": input_dir,
 		"yaw": yaw
 	}
 	input_history.append(entry)
 	local_player.simulate_input(input_dir, yaw, tick_delta)
-	server_receive_input.rpc_id(1, current_tick, input_dir, yaw)
+	if input_delay_ticks > 0:
+		var send_at: int = current_tick + input_delay_ticks
+		send_queue.append({
+			"tick": current_tick,
+			"input": input_dir,
+			"yaw": yaw,
+			"send_at": send_at
+		})
+	else:
+		server_receive_input.rpc_id(1, current_tick, input_dir, yaw)
+
+func _flush_send_queue(current_tick: int) -> void:
+	if send_queue.is_empty():
+		return
+	var remaining: Array[Dictionary] = []
+	for item in send_queue:
+		var entry: Dictionary = item
+		if entry["send_at"] <= current_tick:
+			server_receive_input.rpc_id(1, entry["tick"], entry["input"], entry["yaw"])
+		else:
+			remaining.append(entry)
+	send_queue = remaining
 
 func _send_snapshot(current_tick: int) -> void:
 	var player_states: Array[Dictionary] = []
@@ -189,7 +241,16 @@ func send_snapshot(_tick: int, ack_tick: int, player_states: Array[Dictionary], 
 		var player := _get_player(peer_id)
 		if player:
 			if peer_id == multiplayer.get_unique_id():
-				input_history = player.reconcile_from_server(pos, vel, yaw, ack_tick, input_history, tick_delta, player.reconcile_threshold)
+				input_history = player.reconcile_from_server(
+					pos,
+					vel,
+					yaw,
+					ack_tick,
+					input_history,
+					tick_delta,
+					player.velocity_deadzone,
+					player.position_deadzone
+				)
 			else:
 				player.apply_snapshot(pos, vel, yaw)
 	for state in cube_states:
@@ -199,17 +260,39 @@ func send_snapshot(_tick: int, ack_tick: int, player_states: Array[Dictionary], 
 		if cube:
 			cube.apply_snapshot(pos)
 
-func set_latency_settings(input_ms: int, snapshot_ms: int, jitter: int, loss: float) -> void:
-	input_latency_ms = max(input_ms, 0)
-	snapshot_latency_ms = max(snapshot_ms, 0)
+func set_latency_settings(rtt_value_ms: int, jitter: int, loss: float) -> void:
+	_set_rtt_ms(rtt_value_ms)
 	jitter_ms = max(jitter, 0)
 	loss_percent = clampf(loss, 0.0, 100.0)
+	_set_tick_rate(tick_rate)
 
 @rpc("any_peer", "reliable")
-func set_latency_rpc(input_ms: int, snapshot_ms: int, jitter: int, loss: float) -> void:
+func set_latency_rpc(rtt_value_ms: int, jitter: int, loss: float) -> void:
 	if not multiplayer.is_server():
 		return
-	set_latency_settings(input_ms, snapshot_ms, jitter, loss)
+	set_latency_settings(rtt_value_ms, jitter, loss)
+
+@rpc("any_peer", "reliable")
+func set_rtt_ms_rpc(rtt_value_ms: int) -> void:
+	if not multiplayer.is_server():
+		return
+	_set_rtt_ms(rtt_value_ms)
+
+@rpc("any_peer", "reliable")
+func set_tick_rate_rpc(rate: float) -> void:
+	if not multiplayer.is_server():
+		return
+	_set_tick_rate(rate)
+
+func _set_tick_rate(rate: float) -> void:
+	tick_rate = clampf(rate, 5.0, 60.0)
+	tick_delta = 1.0 / tick_rate
+
+func _set_rtt_ms(rtt_value_ms: int) -> void:
+	rtt_ms_setting = clampi(rtt_value_ms, 0, 600)
+	var one_way: int = int(floor(float(rtt_ms_setting) * 0.5))
+	input_latency_ms = one_way
+	snapshot_latency_ms = one_way
 
 func _queue_input(peer_id: int, tick: int, input_dir: Vector2, yaw: float) -> void:
 	if _should_drop():
@@ -309,6 +392,65 @@ func _get_peer_input(peer_id: int) -> Dictionary:
 	if player:
 		yaw = player.rotation.y
 	return {"input": Vector2.ZERO, "yaw": yaw, "tick": 0}
+
+@rpc("any_peer", "reliable")
+func ping_request(client_time_ms: int, seq: int) -> void:
+	if not multiplayer.is_server():
+		return
+	var sender: int = multiplayer.get_remote_sender_id()
+	if _should_drop():
+		return
+	var send_at: int = Time.get_ticks_msec() + _latency_ms(snapshot_latency_ms)
+	ping_response_queue.append({
+		"time_ms": send_at,
+		"peer_id": sender,
+		"client_time_ms": client_time_ms,
+		"seq": seq
+	})
+
+@rpc("any_peer", "reliable")
+func ping_response(client_time_ms: int, _seq: int) -> void:
+	if multiplayer.is_server():
+		return
+	var now: int = Time.get_ticks_msec()
+	rtt_ms = float(now - client_time_ms)
+
+func _process_ping_send_queue(now: int) -> void:
+	if ping_out_queue.is_empty():
+		return
+	var remaining: Array[Dictionary] = []
+	for item in ping_out_queue:
+		var entry: Dictionary = item
+		if entry["time_ms"] <= now:
+			ping_request.rpc_id(1, entry["client_time_ms"], entry["seq"])
+		else:
+			remaining.append(entry)
+	ping_out_queue = remaining
+
+func _process_ping_response_queue(now: int) -> void:
+	if ping_response_queue.is_empty():
+		return
+	var remaining: Array[Dictionary] = []
+	for item in ping_response_queue:
+		var entry: Dictionary = item
+		if entry["time_ms"] <= now:
+			ping_response.rpc_id(entry["peer_id"], entry["client_time_ms"], entry["seq"])
+		else:
+			remaining.append(entry)
+	ping_response_queue = remaining
+
+func get_net_stats() -> Dictionary:
+	return {
+		"rtt_ms": rtt_ms,
+		"rtt_setting_ms": rtt_ms_setting,
+		"tick_rate": tick_rate,
+		"tick_id": tick_id,
+		"input_delay_ticks": input_delay_ticks,
+		"input_latency_ms": input_latency_ms,
+		"snapshot_latency_ms": snapshot_latency_ms,
+		"jitter_ms": jitter_ms,
+		"loss_percent": loss_percent
+	}
 
 func _get_local_player() -> PlayerController:
 	var local_id := multiplayer.get_unique_id()

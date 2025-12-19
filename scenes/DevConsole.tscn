@@ -25,9 +25,9 @@ scroll_active = true
 [node name="Input" type="LineEdit" parent="Panel/VBox"]
 
 [node name="LatencyPanel" type="Panel" parent="."]
-visible = false
-position = Vector2(20, 260)
-size = Vector2(420, 200)
+visible = true
+position = Vector2(20, 20)
+size = Vector2(315, 255)
 
 [node name="LatencyVBox" type="VBoxContainer" parent="LatencyPanel"]
 anchor_right = 1.0
@@ -37,35 +37,21 @@ offset_top = 8.0
 offset_right = -8.0
 offset_bottom = -8.0
 
-[node name="LatencyTitle" type="Label" parent="LatencyPanel/LatencyVBox"]
+[node name="LatencyToggle" type="Button" parent="LatencyPanel/LatencyVBox"]
 text = "Latency Settings"
 
-[node name="InputRow" type="HBoxContainer" parent="LatencyPanel/LatencyVBox"]
+[node name="RttRow" type="HBoxContainer" parent="LatencyPanel/LatencyVBox"]
 
-[node name="InputLabel" type="Label" parent="LatencyPanel/LatencyVBox/InputRow"]
-text = "Input ms"
+[node name="RttLabel" type="Label" parent="LatencyPanel/LatencyVBox/RttRow"]
+text = "RTT ms"
 
-[node name="InputSlider" type="HSlider" parent="LatencyPanel/LatencyVBox/InputRow"]
+[node name="RttSlider" type="HSlider" parent="LatencyPanel/LatencyVBox/RttRow"]
 size_flags_horizontal = 3
-max_value = 300.0
+max_value = 600.0
 step = 1.0
 value = 0.0
 
-[node name="InputValue" type="Label" parent="LatencyPanel/LatencyVBox/InputRow"]
-text = "0"
-
-[node name="SnapshotRow" type="HBoxContainer" parent="LatencyPanel/LatencyVBox"]
-
-[node name="SnapshotLabel" type="Label" parent="LatencyPanel/LatencyVBox/SnapshotRow"]
-text = "Snapshot ms"
-
-[node name="SnapshotSlider" type="HSlider" parent="LatencyPanel/LatencyVBox/SnapshotRow"]
-size_flags_horizontal = 3
-max_value = 300.0
-step = 1.0
-value = 0.0
-
-[node name="SnapshotValue" type="Label" parent="LatencyPanel/LatencyVBox/SnapshotRow"]
+[node name="RttValue" type="Label" parent="LatencyPanel/LatencyVBox/RttRow"]
 text = "0"
 
 [node name="JitterRow" type="HBoxContainer" parent="LatencyPanel/LatencyVBox"]
@@ -96,7 +82,7 @@ value = 0.0
 [node name="LossValue" type="Label" parent="LatencyPanel/LatencyVBox/LossRow"]
 text = "0"
 
-[node name="CorrectionTitle" type="Label" parent="LatencyPanel/LatencyVBox"]
+[node name="CorrectionToggle" type="Button" parent="LatencyPanel/LatencyVBox"]
 text = "Correction Settings"
 
 [node name="MaxCorrectionRow" type="HBoxContainer" parent="LatencyPanel/LatencyVBox"]
@@ -113,6 +99,20 @@ value = 0.4
 [node name="MaxCorrectionValue" type="Label" parent="LatencyPanel/LatencyVBox/MaxCorrectionRow"]
 text = "0.4"
 
+[node name="ReconcileVelocityRow" type="HBoxContainer" parent="LatencyPanel/LatencyVBox"]
+
+[node name="ReconcileVelocityLabel" type="Label" parent="LatencyPanel/LatencyVBox/ReconcileVelocityRow"]
+text = "Vel blend"
+
+[node name="ReconcileVelocitySlider" type="HSlider" parent="LatencyPanel/LatencyVBox/ReconcileVelocityRow"]
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.05
+value = 0.5
+
+[node name="ReconcileVelocityValue" type="Label" parent="LatencyPanel/LatencyVBox/ReconcileVelocityRow"]
+text = "0.5"
+
 [node name="SnapThresholdRow" type="HBoxContainer" parent="LatencyPanel/LatencyVBox"]
 
 [node name="SnapThresholdLabel" type="Label" parent="LatencyPanel/LatencyVBox/SnapThresholdRow"]
@@ -127,7 +127,7 @@ value = 3.0
 [node name="SnapThresholdValue" type="Label" parent="LatencyPanel/LatencyVBox/SnapThresholdRow"]
 text = "3.0"
 
-[node name="CameraTitle" type="Label" parent="LatencyPanel/LatencyVBox"]
+[node name="CameraToggle" type="Button" parent="LatencyPanel/LatencyVBox"]
 text = "Camera Settings"
 
 [node name="CameraSmoothRow" type="HBoxContainer" parent="LatencyPanel/LatencyVBox"]
@@ -143,3 +143,128 @@ value = 12.0
 
 [node name="CameraSmoothValue" type="Label" parent="LatencyPanel/LatencyVBox/CameraSmoothRow"]
 text = "12.0"
+
+[node name="MovementToggle" type="Button" parent="LatencyPanel/LatencyVBox"]
+text = "Movement Settings"
+
+[node name="AccelRow" type="HBoxContainer" parent="LatencyPanel/LatencyVBox"]
+
+[node name="AccelLabel" type="Label" parent="LatencyPanel/LatencyVBox/AccelRow"]
+text = "Accel"
+
+[node name="AccelSlider" type="HSlider" parent="LatencyPanel/LatencyVBox/AccelRow"]
+size_flags_horizontal = 3
+max_value = 60.0
+step = 0.5
+value = 20.0
+
+[node name="AccelValue" type="Label" parent="LatencyPanel/LatencyVBox/AccelRow"]
+text = "20.0"
+
+[node name="DecelRow" type="HBoxContainer" parent="LatencyPanel/LatencyVBox"]
+
+[node name="DecelLabel" type="Label" parent="LatencyPanel/LatencyVBox/DecelRow"]
+text = "Decel"
+
+[node name="DecelSlider" type="HSlider" parent="LatencyPanel/LatencyVBox/DecelRow"]
+size_flags_horizontal = 3
+max_value = 80.0
+step = 0.5
+value = 24.0
+
+[node name="DecelValue" type="Label" parent="LatencyPanel/LatencyVBox/DecelRow"]
+text = "24.0"
+
+[node name="InputDelayRow" type="HBoxContainer" parent="LatencyPanel/LatencyVBox"]
+
+[node name="InputDelayLabel" type="Label" parent="LatencyPanel/LatencyVBox/InputDelayRow"]
+text = "Input delay"
+
+[node name="InputDelaySlider" type="HSlider" parent="LatencyPanel/LatencyVBox/InputDelayRow"]
+size_flags_horizontal = 3
+max_value = 6.0
+step = 1.0
+value = 0.0
+
+[node name="InputDelayValue" type="Label" parent="LatencyPanel/LatencyVBox/InputDelayRow"]
+text = "0"
+
+[node name="TickRateRow" type="HBoxContainer" parent="LatencyPanel/LatencyVBox"]
+
+[node name="TickRateLabel" type="Label" parent="LatencyPanel/LatencyVBox/TickRateRow"]
+text = "Tick rate"
+
+[node name="TickRateSlider" type="HSlider" parent="LatencyPanel/LatencyVBox/TickRateRow"]
+size_flags_horizontal = 3
+max_value = 60.0
+min_value = 5.0
+step = 1.0
+value = 30.0
+
+[node name="TickRateValue" type="Label" parent="LatencyPanel/LatencyVBox/TickRateRow"]
+text = "30"
+
+[node name="VelDeadzoneRow" type="HBoxContainer" parent="LatencyPanel/LatencyVBox"]
+
+[node name="VelDeadzoneLabel" type="Label" parent="LatencyPanel/LatencyVBox/VelDeadzoneRow"]
+text = "Vel deadzone"
+
+[node name="VelDeadzoneSlider" type="HSlider" parent="LatencyPanel/LatencyVBox/VelDeadzoneRow"]
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.01
+value = 0.1
+
+[node name="VelDeadzoneValue" type="Label" parent="LatencyPanel/LatencyVBox/VelDeadzoneRow"]
+text = "0.1"
+
+[node name="PosDeadzoneRow" type="HBoxContainer" parent="LatencyPanel/LatencyVBox"]
+
+[node name="PosDeadzoneLabel" type="Label" parent="LatencyPanel/LatencyVBox/PosDeadzoneRow"]
+text = "Pos deadzone"
+
+[node name="PosDeadzoneSlider" type="HSlider" parent="LatencyPanel/LatencyVBox/PosDeadzoneRow"]
+size_flags_horizontal = 3
+max_value = 2.0
+step = 0.01
+value = 0.3
+
+[node name="PosDeadzoneValue" type="Label" parent="LatencyPanel/LatencyVBox/PosDeadzoneRow"]
+text = "0.3"
+
+[node name="LocalInterpRow" type="HBoxContainer" parent="LatencyPanel/LatencyVBox"]
+
+[node name="LocalInterpLabel" type="Label" parent="LatencyPanel/LatencyVBox/LocalInterpRow"]
+text = "Local interp"
+
+[node name="LocalInterpSlider" type="HSlider" parent="LatencyPanel/LatencyVBox/LocalInterpRow"]
+size_flags_horizontal = 3
+max_value = 200.0
+step = 5.0
+value = 60.0
+
+[node name="LocalInterpValue" type="Label" parent="LatencyPanel/LatencyVBox/LocalInterpRow"]
+text = "60"
+
+[node name="RemoteInterpRow" type="HBoxContainer" parent="LatencyPanel/LatencyVBox"]
+
+[node name="RemoteInterpLabel" type="Label" parent="LatencyPanel/LatencyVBox/RemoteInterpRow"]
+text = "Remote interp"
+
+[node name="RemoteInterpSlider" type="HSlider" parent="LatencyPanel/LatencyVBox/RemoteInterpRow"]
+size_flags_horizontal = 3
+max_value = 250.0
+step = 5.0
+value = 120.0
+
+[node name="RemoteInterpValue" type="Label" parent="LatencyPanel/LatencyVBox/RemoteInterpRow"]
+text = "120"
+
+[node name="NetStats" type="Label" parent="."]
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -320.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = 140.0
+text = "Net"

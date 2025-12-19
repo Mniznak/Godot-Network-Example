@@ -9,13 +9,20 @@ extends CharacterBody3D
 @export var max_correction_per_tick: float = 0.4
 @export var snap_threshold: float = 3.0
 @export var velocity_correction: float = 0.25
-@export var reconcile_threshold: float = 0.15
+@export var velocity_deadzone: float = 0.1
+@export var position_deadzone: float = 0.3
+@export var reconcile_velocity_blend: float = 0.5
+@export var spring_frequency: float = 6.0
+@export var spring_damping: float = 1.0
+@export var acceleration: float = 20.0
+@export var deceleration: float = 24.0
 @export var mouse_sensitivity: float = 0.005
 @export var pitch_min: float = deg_to_rad(-60.0)
 @export var pitch_max: float = deg_to_rad(60.0)
 @export var camera_follow_smoothing: float = 12.0
 @export var camera_offset: Vector3 = Vector3(0.0, 1.6, 4.0)
-@export var interpolation_delay_ms: int = 100
+@export var local_interpolation_delay_ms: int = 60
+@export var remote_interpolation_delay_ms: int = 120
 @export var max_snapshots: int = 32
 @export var show_server_ghost: bool = true
 @onready var camera: Camera3D = $Camera3D
@@ -28,6 +35,7 @@ var has_server_position: bool = false
 var ghost: MeshInstance3D = null
 var snapshot_buffer: Array[Dictionary] = []
 var pitch: float = 0.0
+var correction_velocity: Vector3 = Vector3.ZERO
 
 func _ready() -> void:
 	_apply_authority()
@@ -39,28 +47,35 @@ func _physics_process(delta: float) -> void:
 	if multiplayer.is_server():
 		return
 	if _is_local_player():
-		_apply_local_correction()
+		_apply_local_correction(delta)
 		_update_camera(delta)
 		_update_ghost_from_buffer()
 		return
 	_interpolate_remote()
 
-func _apply_local_correction() -> void:
+func _apply_local_correction(delta: float) -> void:
 	if not has_server_position:
 		return
 	var error: Vector3 = server_position - global_position
 	var error_len: float = error.length()
 	if error_len <= correction_deadzone:
+		correction_velocity = Vector3.ZERO
 		return
 	if error_len >= snap_threshold:
 		global_position = server_position
 		velocity = server_velocity
+		correction_velocity = Vector3.ZERO
 		return
 	velocity = velocity.lerp(server_velocity, velocity_correction)
-	var target: Vector3 = global_position.lerp(server_position, local_correction)
-	var step: Vector3 = target - global_position
+	var omega: float = TAU * spring_frequency
+	var k: float = omega * omega
+	var c: float = 2.0 * spring_damping * omega
+	var accel: Vector3 = error * k - correction_velocity * c
+	correction_velocity += accel * delta
+	var step: Vector3 = correction_velocity * delta
 	if step.length() > max_correction_per_tick:
 		step = step.normalized() * max_correction_per_tick
+		correction_velocity = step / delta
 	global_position += step
 
 func _interpolate_remote() -> void:
@@ -90,8 +105,12 @@ func tick_move(input_dir: Vector2, delta: float) -> void:
 	var dir: Vector3 = (right * input_dir.x + forward * input_dir.y)
 	if dir.length() > 1.0:
 		dir = dir.normalized()
-	velocity.x = dir.x * speed
-	velocity.z = dir.z * speed
+	var target_velocity: Vector3 = dir * speed
+	var accel: float = acceleration
+	if dir == Vector3.ZERO:
+		accel = deceleration
+	velocity.x = move_toward(velocity.x, target_velocity.x, accel * delta)
+	velocity.z = move_toward(velocity.z, target_velocity.z, accel * delta)
 	if not is_on_floor():
 		velocity.y -= gravity * delta
 	else:
@@ -115,17 +134,28 @@ func apply_snapshot(pos: Vector3, vel: Vector3, yaw: float) -> void:
 	if ghost:
 		ghost.global_position = server_position
 
-func reconcile_from_server(pos: Vector3, vel: Vector3, yaw: float, ack_tick: int, history: Array[Dictionary], delta: float, threshold: float) -> Array[Dictionary]:
+func reconcile_from_server(pos: Vector3, vel: Vector3, yaw: float, ack_tick: int, history: Array[Dictionary], delta: float, vel_deadzone: float, pos_deadzone: float) -> Array[Dictionary]:
 	server_position = pos
 	server_velocity = vel
 	server_yaw = yaw
 	has_server_position = true
 	var error: Vector3 = pos - global_position
-	if error.length() <= threshold:
+	var error_len: float = error.length()
+	if error_len <= vel_deadzone:
+		return _prune_history(history, ack_tick)
+	if error_len <= pos_deadzone:
+		velocity = velocity.lerp(vel, reconcile_velocity_blend)
+		return _prune_history(history, ack_tick)
+	if error_len >= snap_threshold:
+		global_position = pos
+		velocity = vel
+		rotation.y = yaw
+		correction_velocity = Vector3.ZERO
 		return _prune_history(history, ack_tick)
 	global_position = pos
-	velocity = vel
+	velocity = velocity.lerp(vel, reconcile_velocity_blend)
 	rotation.y = yaw
+	correction_velocity = Vector3.ZERO
 	var remaining: Array[Dictionary] = []
 	for entry in history:
 		var tick: int = entry["tick"]
@@ -201,7 +231,7 @@ func _sample_snapshot_position() -> Vector3:
 		if has_server_position:
 			return server_position
 		return global_position
-	var render_time: int = Time.get_ticks_msec() - interpolation_delay_ms
+	var render_time: int = Time.get_ticks_msec() - _get_interpolation_delay_ms()
 	while snapshot_buffer.size() >= 2 and snapshot_buffer[1]["time_ms"] <= render_time:
 		snapshot_buffer.remove_at(0)
 	if snapshot_buffer.size() == 1:
@@ -222,3 +252,8 @@ func _update_ghost_from_buffer() -> void:
 		return
 	var interp_pos: Vector3 = _sample_snapshot_position()
 	ghost.global_position = interp_pos
+
+func _get_interpolation_delay_ms() -> int:
+	if _is_local_player():
+		return local_interpolation_delay_ms
+	return remote_interpolation_delay_ms
