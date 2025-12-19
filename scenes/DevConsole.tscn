@@ -1,0 +1,128 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/DevConsole.gd" id="1"]
+
+[node name="DevConsole" type="CanvasLayer"]
+script = ExtResource("1")
+
+[node name="Panel" type="Panel" parent="."]
+visible = false
+position = Vector2(20, 20)
+size = Vector2(600, 220)
+
+[node name="VBox" type="VBoxContainer" parent="Panel"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+
+[node name="Log" type="RichTextLabel" parent="Panel/VBox"]
+custom_minimum_size = Vector2(0, 120)
+scroll_active = true
+
+[node name="Input" type="LineEdit" parent="Panel/VBox"]
+
+[node name="LatencyPanel" type="Panel" parent="."]
+visible = false
+position = Vector2(20, 260)
+size = Vector2(420, 200)
+
+[node name="LatencyVBox" type="VBoxContainer" parent="LatencyPanel"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+
+[node name="LatencyTitle" type="Label" parent="LatencyPanel/LatencyVBox"]
+text = "Latency Settings"
+
+[node name="InputRow" type="HBoxContainer" parent="LatencyPanel/LatencyVBox"]
+
+[node name="InputLabel" type="Label" parent="LatencyPanel/LatencyVBox/InputRow"]
+text = "Input ms"
+
+[node name="InputSlider" type="HSlider" parent="LatencyPanel/LatencyVBox/InputRow"]
+size_flags_horizontal = 3
+max_value = 300.0
+step = 1.0
+value = 0.0
+
+[node name="InputValue" type="Label" parent="LatencyPanel/LatencyVBox/InputRow"]
+text = "0"
+
+[node name="SnapshotRow" type="HBoxContainer" parent="LatencyPanel/LatencyVBox"]
+
+[node name="SnapshotLabel" type="Label" parent="LatencyPanel/LatencyVBox/SnapshotRow"]
+text = "Snapshot ms"
+
+[node name="SnapshotSlider" type="HSlider" parent="LatencyPanel/LatencyVBox/SnapshotRow"]
+size_flags_horizontal = 3
+max_value = 300.0
+step = 1.0
+value = 0.0
+
+[node name="SnapshotValue" type="Label" parent="LatencyPanel/LatencyVBox/SnapshotRow"]
+text = "0"
+
+[node name="JitterRow" type="HBoxContainer" parent="LatencyPanel/LatencyVBox"]
+
+[node name="JitterLabel" type="Label" parent="LatencyPanel/LatencyVBox/JitterRow"]
+text = "Jitter ms"
+
+[node name="JitterSlider" type="HSlider" parent="LatencyPanel/LatencyVBox/JitterRow"]
+size_flags_horizontal = 3
+max_value = 100.0
+step = 1.0
+value = 0.0
+
+[node name="JitterValue" type="Label" parent="LatencyPanel/LatencyVBox/JitterRow"]
+text = "0"
+
+[node name="LossRow" type="HBoxContainer" parent="LatencyPanel/LatencyVBox"]
+
+[node name="LossLabel" type="Label" parent="LatencyPanel/LatencyVBox/LossRow"]
+text = "Loss %"
+
+[node name="LossSlider" type="HSlider" parent="LatencyPanel/LatencyVBox/LossRow"]
+size_flags_horizontal = 3
+max_value = 30.0
+step = 0.5
+value = 0.0
+
+[node name="LossValue" type="Label" parent="LatencyPanel/LatencyVBox/LossRow"]
+text = "0"
+
+[node name="CorrectionTitle" type="Label" parent="LatencyPanel/LatencyVBox"]
+text = "Correction Settings"
+
+[node name="MaxCorrectionRow" type="HBoxContainer" parent="LatencyPanel/LatencyVBox"]
+
+[node name="MaxCorrectionLabel" type="Label" parent="LatencyPanel/LatencyVBox/MaxCorrectionRow"]
+text = "Max step"
+
+[node name="MaxCorrectionSlider" type="HSlider" parent="LatencyPanel/LatencyVBox/MaxCorrectionRow"]
+size_flags_horizontal = 3
+max_value = 2.0
+step = 0.05
+value = 0.4
+
+[node name="MaxCorrectionValue" type="Label" parent="LatencyPanel/LatencyVBox/MaxCorrectionRow"]
+text = "0.4"
+
+[node name="SnapThresholdRow" type="HBoxContainer" parent="LatencyPanel/LatencyVBox"]
+
+[node name="SnapThresholdLabel" type="Label" parent="LatencyPanel/LatencyVBox/SnapThresholdRow"]
+text = "Snap dist"
+
+[node name="SnapThresholdSlider" type="HSlider" parent="LatencyPanel/LatencyVBox/SnapThresholdRow"]
+size_flags_horizontal = 3
+max_value = 10.0
+step = 0.1
+value = 3.0
+
+[node name="SnapThresholdValue" type="Label" parent="LatencyPanel/LatencyVBox/SnapThresholdRow"]
+text = "3.0"
