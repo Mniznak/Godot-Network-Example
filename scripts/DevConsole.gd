@@ -6,41 +6,46 @@ extends CanvasLayer
 @onready var log_output: RichTextLabel = $Panel/VBox/Log
 @onready var input: LineEdit = $Panel/VBox/Input
 @onready var latency_panel: Panel = $LatencyPanel
-@onready var rtt_slider: HSlider = $LatencyPanel/LatencyVBox/RttRow/RttSlider
-@onready var rtt_value: Label = $LatencyPanel/LatencyVBox/RttRow/RttValue
-@onready var jitter_slider: HSlider = $LatencyPanel/LatencyVBox/JitterRow/JitterSlider
-@onready var jitter_value: Label = $LatencyPanel/LatencyVBox/JitterRow/JitterValue
-@onready var loss_slider: HSlider = $LatencyPanel/LatencyVBox/LossRow/LossSlider
-@onready var loss_value: Label = $LatencyPanel/LatencyVBox/LossRow/LossValue
-@onready var latency_toggle: Button = $LatencyPanel/LatencyVBox/LatencyToggle
-@onready var correction_toggle: Button = $LatencyPanel/LatencyVBox/CorrectionToggle
-@onready var camera_toggle: Button = $LatencyPanel/LatencyVBox/CameraToggle
-@onready var movement_toggle: Button = $LatencyPanel/LatencyVBox/MovementToggle
-@onready var max_correction_slider: HSlider = $LatencyPanel/LatencyVBox/MaxCorrectionRow/MaxCorrectionSlider
-@onready var max_correction_value: Label = $LatencyPanel/LatencyVBox/MaxCorrectionRow/MaxCorrectionValue
-@onready var snap_threshold_slider: HSlider = $LatencyPanel/LatencyVBox/SnapThresholdRow/SnapThresholdSlider
-@onready var snap_threshold_value: Label = $LatencyPanel/LatencyVBox/SnapThresholdRow/SnapThresholdValue
-@onready var reconcile_velocity_slider: HSlider = $LatencyPanel/LatencyVBox/ReconcileVelocityRow/ReconcileVelocitySlider
-@onready var reconcile_velocity_value: Label = $LatencyPanel/LatencyVBox/ReconcileVelocityRow/ReconcileVelocityValue
-@onready var camera_smooth_slider: HSlider = $LatencyPanel/LatencyVBox/CameraSmoothRow/CameraSmoothSlider
-@onready var camera_smooth_value: Label = $LatencyPanel/LatencyVBox/CameraSmoothRow/CameraSmoothValue
-@onready var accel_slider: HSlider = $LatencyPanel/LatencyVBox/AccelRow/AccelSlider
-@onready var accel_value: Label = $LatencyPanel/LatencyVBox/AccelRow/AccelValue
-@onready var decel_slider: HSlider = $LatencyPanel/LatencyVBox/DecelRow/DecelSlider
-@onready var decel_value: Label = $LatencyPanel/LatencyVBox/DecelRow/DecelValue
-@onready var input_delay_slider: HSlider = $LatencyPanel/LatencyVBox/InputDelayRow/InputDelaySlider
-@onready var input_delay_value: Label = $LatencyPanel/LatencyVBox/InputDelayRow/InputDelayValue
-@onready var tick_rate_slider: HSlider = $LatencyPanel/LatencyVBox/TickRateRow/TickRateSlider
-@onready var tick_rate_value: Label = $LatencyPanel/LatencyVBox/TickRateRow/TickRateValue
-@onready var vel_deadzone_slider: HSlider = $LatencyPanel/LatencyVBox/VelDeadzoneRow/VelDeadzoneSlider
-@onready var vel_deadzone_value: Label = $LatencyPanel/LatencyVBox/VelDeadzoneRow/VelDeadzoneValue
-@onready var pos_deadzone_slider: HSlider = $LatencyPanel/LatencyVBox/PosDeadzoneRow/PosDeadzoneSlider
-@onready var pos_deadzone_value: Label = $LatencyPanel/LatencyVBox/PosDeadzoneRow/PosDeadzoneValue
-@onready var local_interp_slider: HSlider = $LatencyPanel/LatencyVBox/LocalInterpRow/LocalInterpSlider
-@onready var local_interp_value: Label = $LatencyPanel/LatencyVBox/LocalInterpRow/LocalInterpValue
-@onready var remote_interp_slider: HSlider = $LatencyPanel/LatencyVBox/RemoteInterpRow/RemoteInterpSlider
-@onready var remote_interp_value: Label = $LatencyPanel/LatencyVBox/RemoteInterpRow/RemoteInterpValue
+@onready var latency_body: VBoxContainer = $LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyBody
+@onready var reconcile_body: VBoxContainer = $LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody
+@onready var interpolation_body: VBoxContainer = $LatencyPanel/Scroll/LatencyVBox/InterpolationSection/InterpolationBody
+@onready var movement_body: VBoxContainer = $LatencyPanel/Scroll/LatencyVBox/MovementSection/MovementBody
+@onready var rtt_slider: HSlider = $LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyBody/RttRow/RttSlider
+@onready var rtt_value: Label = $LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyBody/RttRow/RttValue
+@onready var jitter_slider: HSlider = $LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyBody/JitterRow/JitterSlider
+@onready var jitter_value: Label = $LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyBody/JitterRow/JitterValue
+@onready var loss_slider: HSlider = $LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyBody/LossRow/LossSlider
+@onready var loss_value: Label = $LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyBody/LossRow/LossValue
+@onready var input_delay_slider: HSlider = $LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyBody/InputDelayRow/InputDelaySlider
+@onready var input_delay_value: Label = $LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyBody/InputDelayRow/InputDelayValue
+@onready var tick_rate_slider: HSlider = $LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyBody/TickRateRow/TickRateSlider
+@onready var tick_rate_value: Label = $LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyBody/TickRateRow/TickRateValue
+@onready var latency_toggle: Button = $LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyToggle
+@onready var correction_toggle: Button = $LatencyPanel/Scroll/LatencyVBox/ReconcileSection/CorrectionToggle
+@onready var interpolation_toggle: Button = $LatencyPanel/Scroll/LatencyVBox/InterpolationSection/InterpolationToggle
+@onready var movement_toggle: Button = $LatencyPanel/Scroll/LatencyVBox/MovementSection/MovementToggle
+@onready var max_correction_slider: HSlider = $LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/MaxCorrectionRow/MaxCorrectionSlider
+@onready var max_correction_value: Label = $LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/MaxCorrectionRow/MaxCorrectionValue
+@onready var snap_threshold_slider: HSlider = $LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/SnapThresholdRow/SnapThresholdSlider
+@onready var snap_threshold_value: Label = $LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/SnapThresholdRow/SnapThresholdValue
+@onready var reconcile_velocity_slider: HSlider = $LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/ReconcileVelocityRow/ReconcileVelocitySlider
+@onready var reconcile_velocity_value: Label = $LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/ReconcileVelocityRow/ReconcileVelocityValue
+@onready var vel_deadzone_slider: HSlider = $LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/VelDeadzoneRow/VelDeadzoneSlider
+@onready var vel_deadzone_value: Label = $LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/VelDeadzoneRow/VelDeadzoneValue
+@onready var pos_deadzone_slider: HSlider = $LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/PosDeadzoneRow/PosDeadzoneSlider
+@onready var pos_deadzone_value: Label = $LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/PosDeadzoneRow/PosDeadzoneValue
+@onready var local_interp_slider: HSlider = $LatencyPanel/Scroll/LatencyVBox/InterpolationSection/InterpolationBody/LocalInterpRow/LocalInterpSlider
+@onready var local_interp_value: Label = $LatencyPanel/Scroll/LatencyVBox/InterpolationSection/InterpolationBody/LocalInterpRow/LocalInterpValue
+@onready var remote_interp_slider: HSlider = $LatencyPanel/Scroll/LatencyVBox/InterpolationSection/InterpolationBody/RemoteInterpRow/RemoteInterpSlider
+@onready var remote_interp_value: Label = $LatencyPanel/Scroll/LatencyVBox/InterpolationSection/InterpolationBody/RemoteInterpRow/RemoteInterpValue
+@onready var camera_smooth_slider: HSlider = $LatencyPanel/Scroll/LatencyVBox/InterpolationSection/InterpolationBody/CameraSmoothRow/CameraSmoothSlider
+@onready var camera_smooth_value: Label = $LatencyPanel/Scroll/LatencyVBox/InterpolationSection/InterpolationBody/CameraSmoothRow/CameraSmoothValue
+@onready var accel_slider: HSlider = $LatencyPanel/Scroll/LatencyVBox/MovementSection/MovementBody/AccelRow/AccelSlider
+@onready var accel_value: Label = $LatencyPanel/Scroll/LatencyVBox/MovementSection/MovementBody/AccelRow/AccelValue
+@onready var decel_slider: HSlider = $LatencyPanel/Scroll/LatencyVBox/MovementSection/MovementBody/DecelRow/DecelSlider
+@onready var decel_value: Label = $LatencyPanel/Scroll/LatencyVBox/MovementSection/MovementBody/DecelRow/DecelValue
 @onready var net_stats: Label = $NetStats
+@onready var net_graph: Control = $NetGraph
 
 func _ready() -> void:
 	add_to_group("dev_console")
@@ -52,6 +57,7 @@ func _ready() -> void:
 	_sync_correction_from_player()
 	_sync_movement_from_player()
 	_update_section_visibility()
+	_tighten_layout()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -87,6 +93,7 @@ func is_console_open() -> bool:
 
 func _process(_delta: float) -> void:
 	_update_net_stats()
+	_update_net_graph()
 
 func _wire_latency_controls() -> void:
 	rtt_slider.value_changed.connect(_on_settings_changed)
@@ -106,7 +113,7 @@ func _wire_latency_controls() -> void:
 	remote_interp_slider.value_changed.connect(_on_settings_changed)
 	latency_toggle.pressed.connect(_on_latency_toggle)
 	correction_toggle.pressed.connect(_on_correction_toggle)
-	camera_toggle.pressed.connect(_on_camera_toggle)
+	interpolation_toggle.pressed.connect(_on_interpolation_toggle)
 	movement_toggle.pressed.connect(_on_movement_toggle)
 
 func _on_settings_changed(_value: float) -> void:
@@ -165,9 +172,8 @@ func _apply_latency_settings() -> void:
 	var rtt_ms := int(rtt_slider.value)
 	var jitter := int(jitter_slider.value)
 	var loss := float(loss_slider.value)
-	if bootstrap.multiplayer.is_server():
-		bootstrap.set_latency_settings(rtt_ms, jitter, loss)
-	else:
+	bootstrap.set_latency_settings(rtt_ms, jitter, loss)
+	if not bootstrap.multiplayer.is_server():
 		bootstrap.set_latency_rpc.rpc_id(1, rtt_ms, jitter, loss)
 
 func _apply_correction_settings() -> void:
@@ -276,69 +282,28 @@ func _sync_interp_from_player() -> void:
 	_update_interp_labels()
 
 func _on_correction_toggle() -> void:
-	_toggle_section([
-		$LatencyPanel/LatencyVBox/MaxCorrectionRow,
-		$LatencyPanel/LatencyVBox/ReconcileVelocityRow,
-		$LatencyPanel/LatencyVBox/VelDeadzoneRow,
-		$LatencyPanel/LatencyVBox/PosDeadzoneRow,
-		$LatencyPanel/LatencyVBox/SnapThresholdRow
-	])
+	_toggle_container(reconcile_body)
 
-func _on_camera_toggle() -> void:
-	_toggle_section([
-		$LatencyPanel/LatencyVBox/CameraSmoothRow
-	])
+func _on_interpolation_toggle() -> void:
+	_toggle_container(interpolation_body)
 
 func _on_movement_toggle() -> void:
-	_toggle_section([
-		$LatencyPanel/LatencyVBox/AccelRow,
-		$LatencyPanel/LatencyVBox/DecelRow
-	])
+	_toggle_container(movement_body)
 
 func _on_latency_toggle() -> void:
-	_toggle_section([
-		$LatencyPanel/LatencyVBox/RttRow,
-		$LatencyPanel/LatencyVBox/JitterRow,
-		$LatencyPanel/LatencyVBox/LossRow,
-		$LatencyPanel/LatencyVBox/InputDelayRow,
-		$LatencyPanel/LatencyVBox/TickRateRow,
-		$LatencyPanel/LatencyVBox/LocalInterpRow,
-		$LatencyPanel/LatencyVBox/RemoteInterpRow
-	])
+	_toggle_container(latency_body)
 
-func _toggle_section(nodes: Array[Node], force_visible: bool = false, use_force: bool = false) -> void:
-	if nodes.is_empty():
-		return
-	var visible: bool = not nodes[0].visible
+func _toggle_container(container: Control, force_visible: bool = false, use_force: bool = false) -> void:
 	if use_force:
-		visible = force_visible
-	for node in nodes:
-		node.visible = visible
+		container.visible = force_visible
+		return
+	container.visible = not container.visible
 
 func _update_section_visibility() -> void:
-	_toggle_section([
-		$LatencyPanel/LatencyVBox/RttRow,
-		$LatencyPanel/LatencyVBox/JitterRow,
-		$LatencyPanel/LatencyVBox/LossRow,
-		$LatencyPanel/LatencyVBox/InputDelayRow,
-		$LatencyPanel/LatencyVBox/TickRateRow,
-		$LatencyPanel/LatencyVBox/LocalInterpRow,
-		$LatencyPanel/LatencyVBox/RemoteInterpRow
-	], true, true)
-	_toggle_section([
-		$LatencyPanel/LatencyVBox/MaxCorrectionRow,
-		$LatencyPanel/LatencyVBox/ReconcileVelocityRow,
-		$LatencyPanel/LatencyVBox/VelDeadzoneRow,
-		$LatencyPanel/LatencyVBox/PosDeadzoneRow,
-		$LatencyPanel/LatencyVBox/SnapThresholdRow
-	], false, true)
-	_toggle_section([
-		$LatencyPanel/LatencyVBox/CameraSmoothRow
-	], false, true)
-	_toggle_section([
-		$LatencyPanel/LatencyVBox/AccelRow,
-		$LatencyPanel/LatencyVBox/DecelRow
-	], false, true)
+	_toggle_container(latency_body, true, true)
+	_toggle_container(reconcile_body, false, true)
+	_toggle_container(interpolation_body, false, true)
+	_toggle_container(movement_body, false, true)
 
 func _update_net_stats() -> void:
 	var bootstrap: NetworkBootstrap = _get_bootstrap()
@@ -367,3 +332,48 @@ func _get_players() -> Array[PlayerController]:
 		if node is PlayerController:
 			players.append(node)
 	return players
+
+func _tighten_layout() -> void:
+	var labels: Array[Node] = latency_panel.find_children("*", "Label", true, false)
+	for node in labels:
+		var label: Label = node as Label
+		if not label:
+			continue
+		if label.name.ends_with("Value"):
+			label.custom_minimum_size = Vector2(42.0, 0.0)
+			label.size_flags_horizontal = Control.SIZE_SHRINK_END
+		elif label.name.ends_with("Label"):
+			label.custom_minimum_size = Vector2(90.0, 0.0)
+			label.size_flags_horizontal = Control.SIZE_SHRINK_END
+	var hboxes: Array[Node] = latency_panel.find_children("*", "HBoxContainer", true, false)
+	for node in hboxes:
+		var hbox: HBoxContainer = node as HBoxContainer
+		if hbox:
+			hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			hbox.size_flags_stretch_ratio = 1.0
+	var sliders: Array[Node] = latency_panel.find_children("*", "HSlider", true, false)
+	for node in sliders:
+		var slider: HSlider = node as HSlider
+		if slider:
+			slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			slider.custom_minimum_size = Vector2(140.0, 0.0)
+	var buttons: Array[Node] = latency_panel.find_children("*", "Button", true, false)
+	for node in buttons:
+		var button: Button = node as Button
+		if button:
+			button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+func _get_local_player() -> PlayerController:
+	var local_id := multiplayer.get_unique_id()
+	for player in _get_players():
+		if player.peer_id == local_id:
+			return player
+	return null
+
+func _update_net_graph() -> void:
+	var player := _get_local_player()
+	if not player:
+		return
+	var graph := net_graph
+	if graph.has_method("push_sample"):
+		graph.push_sample(player.vel_reconcile_ratio, player.pos_reconcile_ratio)

@@ -36,6 +36,8 @@ var ghost: MeshInstance3D = null
 var snapshot_buffer: Array[Dictionary] = []
 var pitch: float = 0.0
 var correction_velocity: Vector3 = Vector3.ZERO
+var vel_reconcile_ratio: float = 0.0
+var pos_reconcile_ratio: float = 0.0
 
 func _ready() -> void:
 	_apply_authority()
@@ -141,17 +143,22 @@ func reconcile_from_server(pos: Vector3, vel: Vector3, yaw: float, ack_tick: int
 	has_server_position = true
 	var error: Vector3 = pos - global_position
 	var error_len: float = error.length()
+	vel_reconcile_ratio = 0.0
+	pos_reconcile_ratio = 0.0
 	if error_len <= vel_deadzone:
 		return _prune_history(history, ack_tick)
 	if error_len <= pos_deadzone:
+		vel_reconcile_ratio = clampf(error_len / max(pos_deadzone, 0.001), 0.0, 1.0)
 		velocity = velocity.lerp(vel, reconcile_velocity_blend)
 		return _prune_history(history, ack_tick)
 	if error_len >= snap_threshold:
+		pos_reconcile_ratio = 1.0
 		global_position = pos
 		velocity = vel
 		rotation.y = yaw
 		correction_velocity = Vector3.ZERO
 		return _prune_history(history, ack_tick)
+	pos_reconcile_ratio = clampf((error_len - pos_deadzone) / max(snap_threshold - pos_deadzone, 0.001), 0.0, 1.0)
 	global_position = pos
 	velocity = velocity.lerp(vel, reconcile_velocity_blend)
 	rotation.y = yaw
@@ -250,8 +257,7 @@ func _sample_snapshot_position() -> Vector3:
 func _update_ghost_from_buffer() -> void:
 	if not ghost:
 		return
-	var interp_pos: Vector3 = _sample_snapshot_position()
-	ghost.global_position = interp_pos
+	ghost.global_position = server_position
 
 func _get_interpolation_delay_ms() -> int:
 	if _is_local_player():
