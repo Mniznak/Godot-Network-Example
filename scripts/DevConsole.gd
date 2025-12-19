@@ -18,6 +18,8 @@ extends CanvasLayer
 @onready var max_correction_value: Label = $LatencyPanel/LatencyVBox/MaxCorrectionRow/MaxCorrectionValue
 @onready var snap_threshold_slider: HSlider = $LatencyPanel/LatencyVBox/SnapThresholdRow/SnapThresholdSlider
 @onready var snap_threshold_value: Label = $LatencyPanel/LatencyVBox/SnapThresholdRow/SnapThresholdValue
+@onready var camera_smooth_slider: HSlider = $LatencyPanel/LatencyVBox/CameraSmoothRow/CameraSmoothSlider
+@onready var camera_smooth_value: Label = $LatencyPanel/LatencyVBox/CameraSmoothRow/CameraSmoothValue
 
 func _ready() -> void:
 	add_to_group("dev_console")
@@ -67,12 +69,15 @@ func _wire_latency_controls() -> void:
 	loss_slider.value_changed.connect(_on_settings_changed)
 	max_correction_slider.value_changed.connect(_on_settings_changed)
 	snap_threshold_slider.value_changed.connect(_on_settings_changed)
+	camera_smooth_slider.value_changed.connect(_on_settings_changed)
 
 func _on_settings_changed(_value: float) -> void:
 	_update_latency_labels()
 	_update_correction_labels()
+	_update_camera_labels()
 	_apply_latency_settings()
 	_apply_correction_settings()
+	_apply_camera_settings()
 
 func _update_latency_labels() -> void:
 	input_value.text = str(int(input_slider.value))
@@ -83,6 +88,9 @@ func _update_latency_labels() -> void:
 func _update_correction_labels() -> void:
 	max_correction_value.text = str(snappedf(max_correction_slider.value, 0.05))
 	snap_threshold_value.text = str(snappedf(snap_threshold_slider.value, 0.1))
+
+func _update_camera_labels() -> void:
+	camera_smooth_value.text = str(snappedf(camera_smooth_slider.value, 0.5))
 
 func _apply_latency_settings() -> void:
 	var bootstrap: NetworkBootstrap = _get_bootstrap()
@@ -104,6 +112,11 @@ func _apply_correction_settings() -> void:
 		player.max_correction_per_tick = max_step
 		player.snap_threshold = snap_dist
 
+func _apply_camera_settings() -> void:
+	var smooth: float = float(camera_smooth_slider.value)
+	for player in _get_players():
+		player.camera_follow_smoothing = smooth
+
 func _sync_latency_from_net() -> void:
 	var bootstrap: NetworkBootstrap = _get_bootstrap()
 	if not bootstrap:
@@ -122,6 +135,8 @@ func _sync_correction_from_player() -> void:
 	max_correction_slider.value = player.max_correction_per_tick
 	snap_threshold_slider.value = player.snap_threshold
 	_update_correction_labels()
+	camera_smooth_slider.value = player.camera_follow_smoothing
+	_update_camera_labels()
 
 func _get_bootstrap() -> NetworkBootstrap:
 	var nodes: Array[Node] = get_tree().get_nodes_in_group("network_bootstrap")

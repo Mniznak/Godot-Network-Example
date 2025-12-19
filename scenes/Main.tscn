@@ -1,14 +1,14 @@
-[gd_scene load_steps=7 format=3 uid="uid://cvdpicy6lrw0p"]
+[gd_scene load_steps=8 format=3 uid="uid://cvdpicy6lrw0p"]
 
 [ext_resource type="Script" uid="uid://cmuanqpy7b2uq" path="res://scripts/NetworkBootstrap.gd" id="1"]
-[ext_resource type="Script" path="res://scripts/MovingCube.gd" id="3"]
 [ext_resource type="PackedScene" path="res://scenes/DevConsole.tscn" id="2"]
+[ext_resource type="Script" uid="uid://ceaii8bwe1ote" path="res://scripts/MovingCube.gd" id="3"]
 
 [sub_resource type="BoxMesh" id="3"]
 size = Vector3(20, 0.5, 20)
 
 [sub_resource type="BoxShape3D" id="1"]
-size = Vector3(20, 0.5, 20)
+size = Vector3(20, 0.5, 30)
 
 [sub_resource type="BoxMesh" id="4"]
 size = Vector3(1.5, 1.5, 1.5)
@@ -28,7 +28,7 @@ transform = Transform3D(0.70710677, -0.61237246, 0.35355335, 0, 0.49999997, 0.86
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.25, 0)
 
 [node name="FloorMesh" type="MeshInstance3D" parent="Floor"]
-transform = Transform3D(1.034, 0, 0, 0, 1.034, 0, 0, 0, 1.5, 0, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1.5, 0, 0, 0)
 mesh = SubResource("3")
 
 [node name="FloorCollision" type="CollisionShape3D" parent="Floor"]

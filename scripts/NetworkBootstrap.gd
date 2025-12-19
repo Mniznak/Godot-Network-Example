@@ -12,12 +12,14 @@ extends Node3D
 
 var ready_peers: Dictionary = {}
 var peer_inputs: Dictionary = {}
+var peer_last_tick: Dictionary = {}
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var tick_accum: float = 0.0
 var tick_id: int = 0
 var tick_delta: float = 1.0 / 30.0
 var input_queue: Array[Dictionary] = []
 var snapshot_queue: Array[Dictionary] = []
+var input_history: Array[Dictionary] = []
 
 func _ready() -> void:
 	add_to_group("network_bootstrap")
@@ -69,7 +71,8 @@ func _server_tick(current_tick: int) -> void:
 	if local_player:
 		peer_inputs[1] = {
 			"input": local_player.build_input(),
-			"yaw": local_player.get_yaw()
+			"yaw": local_player.get_yaw(),
+			"tick": current_tick
 		}
 
 	for player in _get_players():
@@ -86,8 +89,15 @@ func _client_tick(current_tick: int) -> void:
 	if not local_player:
 		return
 	var input_dir: Vector2 = local_player.build_input()
-	local_player.tick_move(input_dir, tick_delta)
-	server_receive_input.rpc_id(1, current_tick, input_dir, local_player.get_yaw())
+	var yaw: float = local_player.get_yaw()
+	var entry := {
+		"tick": current_tick,
+		"input": input_dir,
+		"yaw": yaw
+	}
+	input_history.append(entry)
+	local_player.simulate_input(input_dir, yaw, tick_delta)
+	server_receive_input.rpc_id(1, current_tick, input_dir, yaw)
 
 func _send_snapshot(current_tick: int) -> void:
 	var player_states: Array[Dictionary] = []
@@ -105,7 +115,10 @@ func _send_snapshot(current_tick: int) -> void:
 			"pos": cube.global_position
 		})
 	for peer_id in get_ready_peers():
-		_queue_snapshot(peer_id, current_tick, player_states, cube_states)
+		var ack_tick: int = 0
+		if peer_last_tick.has(peer_id):
+			ack_tick = int(peer_last_tick[peer_id])
+		_queue_snapshot(peer_id, current_tick, ack_tick, player_states, cube_states)
 
 func _on_peer_connected(peer_id: int) -> void:
 	if multiplayer.is_server():
@@ -124,6 +137,7 @@ func _on_peer_disconnected(peer_id: int) -> void:
 		_despawn_player(peer_id)
 		ready_peers.erase(peer_id)
 		peer_inputs.erase(peer_id)
+		peer_last_tick.erase(peer_id)
 
 func _spawn_player(peer_id: int) -> void:
 	spawn_player.rpc(peer_id)
@@ -163,10 +177,10 @@ func server_receive_input(_tick: int, input_dir: Vector2, yaw: float) -> void:
 	if not multiplayer.is_server():
 		return
 	var sender: int = multiplayer.get_remote_sender_id()
-	_queue_input(sender, input_dir, yaw)
+	_queue_input(sender, _tick, input_dir, yaw)
 
 @rpc("authority", "unreliable")
-func send_snapshot(_tick: int, player_states: Array[Dictionary], cube_states: Array[Dictionary]) -> void:
+func send_snapshot(_tick: int, ack_tick: int, player_states: Array[Dictionary], cube_states: Array[Dictionary]) -> void:
 	for state in player_states:
 		var peer_id: int = state["id"]
 		var pos: Vector3 = state["pos"]
@@ -174,7 +188,10 @@ func send_snapshot(_tick: int, player_states: Array[Dictionary], cube_states: Ar
 		var yaw: float = state["yaw"]
 		var player := _get_player(peer_id)
 		if player:
-			player.apply_snapshot(pos, vel, yaw)
+			if peer_id == multiplayer.get_unique_id():
+				input_history = player.reconcile_from_server(pos, vel, yaw, ack_tick, input_history, tick_delta, player.reconcile_threshold)
+			else:
+				player.apply_snapshot(pos, vel, yaw)
 	for state in cube_states:
 		var cube_name: String = state["name"]
 		var pos: Vector3 = state["pos"]
@@ -194,13 +211,14 @@ func set_latency_rpc(input_ms: int, snapshot_ms: int, jitter: int, loss: float) 
 		return
 	set_latency_settings(input_ms, snapshot_ms, jitter, loss)
 
-func _queue_input(peer_id: int, input_dir: Vector2, yaw: float) -> void:
+func _queue_input(peer_id: int, tick: int, input_dir: Vector2, yaw: float) -> void:
 	if _should_drop():
 		return
 	var deliver_at: int = Time.get_ticks_msec() + _latency_ms(input_latency_ms)
 	input_queue.append({
 		"time_ms": deliver_at,
 		"peer_id": peer_id,
+		"tick": tick,
 		"input": input_dir,
 		"yaw": yaw
 	})
@@ -213,15 +231,19 @@ func _process_input_queue() -> void:
 	for item in input_queue:
 		var entry: Dictionary = item
 		if entry["time_ms"] <= now:
-			peer_inputs[entry["peer_id"]] = {
+			var peer_id: int = entry["peer_id"]
+			var tick: int = entry["tick"]
+			peer_inputs[peer_id] = {
 				"input": entry["input"],
-				"yaw": entry["yaw"]
+				"yaw": entry["yaw"],
+				"tick": tick
 			}
+			peer_last_tick[peer_id] = tick
 		else:
 			remaining.append(entry)
 	input_queue = remaining
 
-func _queue_snapshot(peer_id: int, tick: int, player_states: Array[Dictionary], cube_states: Array[Dictionary]) -> void:
+func _queue_snapshot(peer_id: int, tick: int, ack_tick: int, player_states: Array[Dictionary], cube_states: Array[Dictionary]) -> void:
 	if _should_drop():
 		return
 	var deliver_at: int = Time.get_ticks_msec() + _latency_ms(snapshot_latency_ms)
@@ -229,6 +251,7 @@ func _queue_snapshot(peer_id: int, tick: int, player_states: Array[Dictionary], 
 		"time_ms": deliver_at,
 		"peer_id": peer_id,
 		"tick": tick,
+		"ack": ack_tick,
 		"players": player_states,
 		"cubes": cube_states
 	})
@@ -241,7 +264,7 @@ func _process_snapshot_queue() -> void:
 	for item in snapshot_queue:
 		var entry: Dictionary = item
 		if entry["time_ms"] <= now:
-			send_snapshot.rpc_id(entry["peer_id"], entry["tick"], entry["players"], entry["cubes"])
+			send_snapshot.rpc_id(entry["peer_id"], entry["tick"], entry["ack"], entry["players"], entry["cubes"])
 		else:
 			remaining.append(entry)
 	snapshot_queue = remaining
@@ -285,7 +308,7 @@ func _get_peer_input(peer_id: int) -> Dictionary:
 	var yaw: float = 0.0
 	if player:
 		yaw = player.rotation.y
-	return {"input": Vector2.ZERO, "yaw": yaw}
+	return {"input": Vector2.ZERO, "yaw": yaw, "tick": 0}
 
 func _get_local_player() -> PlayerController:
 	var local_id := multiplayer.get_unique_id()

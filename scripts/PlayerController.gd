@@ -9,9 +9,12 @@ extends CharacterBody3D
 @export var max_correction_per_tick: float = 0.4
 @export var snap_threshold: float = 3.0
 @export var velocity_correction: float = 0.25
+@export var reconcile_threshold: float = 0.15
 @export var mouse_sensitivity: float = 0.005
 @export var pitch_min: float = deg_to_rad(-60.0)
 @export var pitch_max: float = deg_to_rad(60.0)
+@export var camera_follow_smoothing: float = 12.0
+@export var camera_offset: Vector3 = Vector3(0.0, 1.6, 4.0)
 @export var interpolation_delay_ms: int = 100
 @export var max_snapshots: int = 32
 @export var show_server_ghost: bool = true
@@ -30,12 +33,14 @@ func _ready() -> void:
 	_apply_authority()
 	_setup_ghost()
 	pitch = camera.rotation.x
+	camera.position = camera_offset
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	if multiplayer.is_server():
 		return
 	if _is_local_player():
 		_apply_local_correction()
+		_update_camera(delta)
 		_update_ghost_from_buffer()
 		return
 	_interpolate_remote()
@@ -93,6 +98,10 @@ func tick_move(input_dir: Vector2, delta: float) -> void:
 		velocity.y = 0.0
 	move_and_slide()
 
+func simulate_input(input_dir: Vector2, yaw: float, delta: float) -> void:
+	rotation.y = yaw
+	tick_move(input_dir, delta)
+
 func apply_snapshot(pos: Vector3, vel: Vector3, yaw: float) -> void:
 	server_position = pos
 	server_velocity = vel
@@ -105,6 +114,36 @@ func apply_snapshot(pos: Vector3, vel: Vector3, yaw: float) -> void:
 		snapshot_buffer.pop_front()
 	if ghost:
 		ghost.global_position = server_position
+
+func reconcile_from_server(pos: Vector3, vel: Vector3, yaw: float, ack_tick: int, history: Array[Dictionary], delta: float, threshold: float) -> Array[Dictionary]:
+	server_position = pos
+	server_velocity = vel
+	server_yaw = yaw
+	has_server_position = true
+	var error: Vector3 = pos - global_position
+	if error.length() <= threshold:
+		return _prune_history(history, ack_tick)
+	global_position = pos
+	velocity = vel
+	rotation.y = yaw
+	var remaining: Array[Dictionary] = []
+	for entry in history:
+		var tick: int = entry["tick"]
+		if tick <= ack_tick:
+			continue
+		remaining.append(entry)
+		var input_dir: Vector2 = entry["input"]
+		var entry_yaw: float = entry["yaw"]
+		simulate_input(input_dir, entry_yaw, delta)
+	return remaining
+
+func _prune_history(history: Array[Dictionary], ack_tick: int) -> Array[Dictionary]:
+	var remaining: Array[Dictionary] = []
+	for entry in history:
+		var tick: int = entry["tick"]
+		if tick > ack_tick:
+			remaining.append(entry)
+	return remaining
 
 func _apply_authority() -> void:
 	camera.current = _is_local_player()
@@ -149,6 +188,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		rotation.y -= motion.relative.x * mouse_sensitivity
 		pitch = clampf(pitch - motion.relative.y * mouse_sensitivity, pitch_min, pitch_max)
 		camera.rotation = Vector3(pitch, 0.0, 0.0)
+
+func _update_camera(delta: float) -> void:
+	var t: float = 1.0 - exp(-camera_follow_smoothing * delta)
+	camera.position = camera.position.lerp(camera_offset, t)
 
 func get_yaw() -> float:
 	return rotation.y

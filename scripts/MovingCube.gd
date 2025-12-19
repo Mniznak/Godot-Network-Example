@@ -25,9 +25,10 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	time_accum += delta * speed
 	var x: float = sin(time_accum) * move_range
-	global_position = base_position + Vector3(x, 0.0, 0.0)
-	if not multiplayer.is_server():
-		_update_ghost_from_buffer()
+	if multiplayer.is_server():
+		global_position = base_position + Vector3(x, 0.0, 0.0)
+	else:
+		_interpolate_remote()
 
 func apply_snapshot(pos: Vector3) -> void:
 	server_position = pos
@@ -58,6 +59,10 @@ func _sample_snapshot_position() -> Vector3:
 	var alpha: float = float(render_time - t0) / float(t1 - t0)
 	alpha = clampf(alpha, 0.0, 1.0)
 	return s0["pos"].lerp(s1["pos"], alpha)
+
+func _interpolate_remote() -> void:
+	var interp_pos: Vector3 = _sample_snapshot_position()
+	global_position = interp_pos
 
 func _setup_ghost() -> void:
 	if not show_server_ghost:
