@@ -186,6 +186,11 @@ func _prune_history(history: Array[Dictionary], ack_tick: int) -> Array[Dictiona
 
 func _apply_authority() -> void:
 	camera.current = _is_local_player()
+	if _is_local_player():
+		if multiplayer.is_server():
+			set_body_color(Color(0.6, 0.2, 0.8))
+		else:
+			set_body_color(Color(0.2, 0.4, 1.0))
 
 func _is_local_player() -> bool:
 	return multiplayer.get_unique_id() == peer_id

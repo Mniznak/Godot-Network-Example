@@ -98,19 +98,6 @@ value = 0.0
 [node name="LossValue" type="Label" parent="LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyBody/LossRow"]
 text = "0"
 
-[node name="InputDelayRow" type="HBoxContainer" parent="LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyBody"]
-
-[node name="InputDelayLabel" type="Label" parent="LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyBody/InputDelayRow"]
-text = "Input delay"
-
-[node name="InputDelaySlider" type="HSlider" parent="LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyBody/InputDelayRow"]
-size_flags_horizontal = 3
-max_value = 6.0
-step = 1.0
-value = 0.0
-
-[node name="InputDelayValue" type="Label" parent="LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyBody/InputDelayRow"]
-text = "0"
 
 [node name="TickRateRow" type="HBoxContainer" parent="LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyBody"]
 
@@ -305,6 +292,27 @@ value = 24.0
 
 [node name="DecelValue" type="Label" parent="LatencyPanel/Scroll/LatencyVBox/MovementSection/MovementBody/DecelRow"]
 text = "24.0"
+
+[node name="OtherSection" type="VBoxContainer" parent="LatencyPanel/Scroll/LatencyVBox"]
+
+[node name="OtherToggle" type="Button" parent="LatencyPanel/Scroll/LatencyVBox/OtherSection"]
+text = "Other"
+
+[node name="OtherBody" type="VBoxContainer" parent="LatencyPanel/Scroll/LatencyVBox/OtherSection"]
+
+[node name="InputDelayRow" type="HBoxContainer" parent="LatencyPanel/Scroll/LatencyVBox/OtherSection/OtherBody"]
+
+[node name="InputDelayLabel" type="Label" parent="LatencyPanel/Scroll/LatencyVBox/OtherSection/OtherBody/InputDelayRow"]
+text = "Input delay"
+
+[node name="InputDelaySlider" type="HSlider" parent="LatencyPanel/Scroll/LatencyVBox/OtherSection/OtherBody/InputDelayRow"]
+size_flags_horizontal = 3
+max_value = 6.0
+step = 1.0
+value = 0.0
+
+[node name="InputDelayValue" type="Label" parent="LatencyPanel/Scroll/LatencyVBox/OtherSection/OtherBody/InputDelayRow"]
+text = "0"
 
 [node name="NetStats" type="Label" parent="."]
 anchor_left = 1.0

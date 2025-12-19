@@ -29,7 +29,7 @@ var tick_delta: float = 1.0 / 30.0
 var input_queue: Array[Dictionary] = []
 var snapshot_queue: Array[Dictionary] = []
 var input_history: Array[Dictionary] = []
-var send_queue: Array[Dictionary] = []
+var pending_inputs: Array[Dictionary] = []
 var rtt_ms: float = 0.0
 var last_ping_ms: int = 0
 var ping_seq: int = 0
@@ -66,6 +66,8 @@ func _physics_process(delta: float) -> void:
 
 func _process(_delta: float) -> void:
 	if multiplayer.multiplayer_peer == null:
+		return
+	if multiplayer.multiplayer_peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED:
 		return
 	var now: int = Time.get_ticks_msec()
 	if multiplayer.is_server():
@@ -133,7 +135,7 @@ func _client_tick(current_tick: int) -> void:
 	var local_player: PlayerController = _get_local_player()
 	if not local_player:
 		return
-	_flush_send_queue(current_tick)
+	_flush_pending_inputs(current_tick, local_player)
 	var input_dir: Vector2 = local_player.build_input()
 	var yaw: float = local_player.get_yaw()
 	var entry: Dictionary = {
@@ -142,29 +144,29 @@ func _client_tick(current_tick: int) -> void:
 		"yaw": yaw
 	}
 	input_history.append(entry)
-	local_player.simulate_input(input_dir, yaw, tick_delta)
+	server_receive_input.rpc_id(1, current_tick, input_dir, yaw)
 	if input_delay_ticks > 0:
-		var send_at: int = current_tick + input_delay_ticks
-		send_queue.append({
+		var apply_at: int = current_tick + input_delay_ticks
+		pending_inputs.append({
 			"tick": current_tick,
 			"input": input_dir,
 			"yaw": yaw,
-			"send_at": send_at
+			"apply_at": apply_at
 		})
 	else:
-		server_receive_input.rpc_id(1, current_tick, input_dir, yaw)
+		local_player.simulate_input(input_dir, yaw, tick_delta)
 
-func _flush_send_queue(current_tick: int) -> void:
-	if send_queue.is_empty():
+func _flush_pending_inputs(current_tick: int, local_player: PlayerController) -> void:
+	if pending_inputs.is_empty():
 		return
 	var remaining: Array[Dictionary] = []
-	for item in send_queue:
+	for item in pending_inputs:
 		var entry: Dictionary = item
-		if entry["send_at"] <= current_tick:
-			server_receive_input.rpc_id(1, entry["tick"], entry["input"], entry["yaw"])
+		if entry["apply_at"] <= current_tick:
+			local_player.simulate_input(entry["input"], entry["yaw"], tick_delta)
 		else:
 			remaining.append(entry)
-	send_queue = remaining
+	pending_inputs = remaining
 
 func _send_snapshot(current_tick: int) -> void:
 	var player_states: Array[Dictionary] = []
@@ -238,6 +240,10 @@ func _spawn_player_local(peer_id: int) -> PlayerController:
 	add_child(player)
 	player.set_multiplayer_authority(1)
 	player.call_deferred("_apply_authority")
+	if peer_id == 1:
+		player.call_deferred("set_body_color", Color(0.6, 0.2, 0.8))
+	elif peer_id > 1:
+		player.call_deferred("set_body_color", Color(0.2, 0.4, 1.0))
 	var x: float = rng.randf_range(-8.0, 8.0)
 	var z: float = rng.randf_range(1.0, 8.0)
 	player.global_position = Vector3(x, 1.0, z)

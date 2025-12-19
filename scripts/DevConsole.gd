@@ -10,20 +10,22 @@ extends CanvasLayer
 @onready var reconcile_body: VBoxContainer = $LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody
 @onready var interpolation_body: VBoxContainer = $LatencyPanel/Scroll/LatencyVBox/InterpolationSection/InterpolationBody
 @onready var movement_body: VBoxContainer = $LatencyPanel/Scroll/LatencyVBox/MovementSection/MovementBody
+@onready var other_body: VBoxContainer = $LatencyPanel/Scroll/LatencyVBox/OtherSection/OtherBody
 @onready var rtt_slider: HSlider = $LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyBody/RttRow/RttSlider
 @onready var rtt_value: Label = $LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyBody/RttRow/RttValue
 @onready var jitter_slider: HSlider = $LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyBody/JitterRow/JitterSlider
 @onready var jitter_value: Label = $LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyBody/JitterRow/JitterValue
 @onready var loss_slider: HSlider = $LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyBody/LossRow/LossSlider
 @onready var loss_value: Label = $LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyBody/LossRow/LossValue
-@onready var input_delay_slider: HSlider = $LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyBody/InputDelayRow/InputDelaySlider
-@onready var input_delay_value: Label = $LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyBody/InputDelayRow/InputDelayValue
+@onready var input_delay_slider: HSlider = $LatencyPanel/Scroll/LatencyVBox/OtherSection/OtherBody/InputDelayRow/InputDelaySlider
+@onready var input_delay_value: Label = $LatencyPanel/Scroll/LatencyVBox/OtherSection/OtherBody/InputDelayRow/InputDelayValue
 @onready var tick_rate_slider: HSlider = $LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyBody/TickRateRow/TickRateSlider
 @onready var tick_rate_value: Label = $LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyBody/TickRateRow/TickRateValue
 @onready var latency_toggle: Button = $LatencyPanel/Scroll/LatencyVBox/LatencySection/LatencyToggle
 @onready var correction_toggle: Button = $LatencyPanel/Scroll/LatencyVBox/ReconcileSection/CorrectionToggle
 @onready var interpolation_toggle: Button = $LatencyPanel/Scroll/LatencyVBox/InterpolationSection/InterpolationToggle
 @onready var movement_toggle: Button = $LatencyPanel/Scroll/LatencyVBox/MovementSection/MovementToggle
+@onready var other_toggle: Button = $LatencyPanel/Scroll/LatencyVBox/OtherSection/OtherToggle
 @onready var max_correction_slider: HSlider = $LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/MaxCorrectionRow/MaxCorrectionSlider
 @onready var max_correction_value: Label = $LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/MaxCorrectionRow/MaxCorrectionValue
 @onready var snap_threshold_slider: HSlider = $LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/SnapThresholdRow/SnapThresholdSlider
@@ -58,6 +60,7 @@ func _ready() -> void:
 	_sync_movement_from_player()
 	_update_section_visibility()
 	_tighten_layout()
+	_apply_tooltips()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -115,6 +118,7 @@ func _wire_latency_controls() -> void:
 	correction_toggle.pressed.connect(_on_correction_toggle)
 	interpolation_toggle.pressed.connect(_on_interpolation_toggle)
 	movement_toggle.pressed.connect(_on_movement_toggle)
+	other_toggle.pressed.connect(_on_other_toggle)
 
 func _on_settings_changed(_value: float) -> void:
 	_update_latency_labels()
@@ -290,6 +294,9 @@ func _on_interpolation_toggle() -> void:
 func _on_movement_toggle() -> void:
 	_toggle_container(movement_body)
 
+func _on_other_toggle() -> void:
+	_toggle_container(other_body)
+
 func _on_latency_toggle() -> void:
 	_toggle_container(latency_body)
 
@@ -304,6 +311,7 @@ func _update_section_visibility() -> void:
 	_toggle_container(reconcile_body, false, true)
 	_toggle_container(interpolation_body, false, true)
 	_toggle_container(movement_body, false, true)
+	_toggle_container(other_body, false, true)
 
 func _update_net_stats() -> void:
 	var bootstrap: NetworkBootstrap = _get_bootstrap()
@@ -313,11 +321,60 @@ func _update_net_stats() -> void:
 	var stats: Dictionary = bootstrap.get_net_stats()
 	net_stats.text = (
 		"Ping: %sms (sim %sms)\n" % [str(int(stats["rtt_ms"])), str(int(stats["rtt_setting_ms"]))] +
-		"Tick: %s (%s)\n" % [str(int(stats["tick_rate"])), str(int(stats["tick_id"]))] +
-		"Input delay: %s ticks\n" % str(int(stats["input_delay_ticks"])) +
-		"One-way: %sms  Jitter: %sms\n" % [str(int(stats["input_latency_ms"])), str(int(stats["jitter_ms"]))] +
-		"Loss: %s%%" % str(snappedf(float(stats["loss_percent"]), 0.5))
+		"Tick: %s (%s)\n" % [str(int(stats["tick_rate"])), str(int(stats["tick_id"]))]
 	)
+
+func _apply_tooltips() -> void:
+	latency_toggle.tooltip_text = "Latency models real network delay. Use it to see how RTT, jitter, and loss affect prediction and correction."
+	correction_toggle.tooltip_text = "Reconciliation keeps the client honest. These controls decide when and how strongly we correct drift."
+	interpolation_toggle.tooltip_text = "Interpolation smooths remote motion by rendering slightly in the past to hide jitter."
+	movement_toggle.tooltip_text = "Movement tuning affects how input turns into velocity, which changes how prediction feels."
+	_set_row_tooltip("LatencySection/LatencyBody/RttRow", "Round-trip time (RTT). Higher RTT means inputs and snapshots arrive later. One-way delay is RTT/2.")
+	_set_row_tooltip("LatencySection/LatencyBody/JitterRow", "Random variation in delay. Jitter makes timing inconsistent and is a common source of rubber-banding.")
+	_set_row_tooltip("LatencySection/LatencyBody/LossRow", "Packet loss rate. Lost inputs/snapshots force prediction to run longer and can increase correction events.")
+	_set_row_tooltip("OtherSection/OtherBody/InputDelayRow", "Client send delay in ticks. Adds buffering to smooth jitter but reduces responsiveness.")
+	_set_row_tooltip("LatencySection/LatencyBody/TickRateRow", "Simulation tick rate. Higher tick rate reduces per-tick error but increases bandwidth and CPU load.")
+	_set_row_tooltip("ReconcileSection/ReconcileBody/ReconcileVelocityRow", "How much we blend toward server velocity when we reconcile. Higher values correct speed quickly but can feel snappy.")
+	_set_row_tooltip("ReconcileSection/ReconcileBody/VelDeadzoneRow", "Position error threshold for velocity-only correction. If position drift exceeds this (but is below Pos deadzone), we adjust velocity without snapping position.")
+	_set_row_tooltip("ReconcileSection/ReconcileBody/MaxCorrectionRow", "Caps correction distance per tick. Prevents large visible jumps by spreading correction over time.")
+	_set_row_tooltip("ReconcileSection/ReconcileBody/PosDeadzoneRow", "Position error threshold for full reconciliation. Above this, we correct position (rewind/replay) instead of just blending velocity.")
+	_set_row_tooltip("ReconcileSection/ReconcileBody/SnapThresholdRow", "Maximum tolerated error. Beyond this, we snap to the server to avoid runaway divergence.")
+	_set_row_tooltip("InterpolationSection/InterpolationBody/LocalInterpRow", "Local interpolation delay. Smaller values feel more responsive but can expose jitter.")
+	_set_row_tooltip("InterpolationSection/InterpolationBody/RemoteInterpRow", "Remote interpolation delay. Larger values hide jitter but add visual lag to other players.")
+	_set_row_tooltip("InterpolationSection/InterpolationBody/CameraSmoothRow", "Camera smoothing to reduce perceived jerk from small corrections.")
+	_set_row_tooltip("MovementSection/MovementBody/AccelRow", "How quickly velocity ramps up. Higher accel feels snappier but less smooth under lag.")
+	_set_row_tooltip("MovementSection/MovementBody/DecelRow", "How quickly velocity slows down. Higher decel reduces drift but can feel abrupt.")
+	_set_header_tooltip("ReconcileSection/ReconcileBody/VelocityHeader", "Velocity reconciliation corrects speed/direction without hard position snaps.")
+	_set_header_tooltip("ReconcileSection/ReconcileBody/PositionHeader", "Position reconciliation corrects accumulated error by snapping or replaying inputs.")
+	_set_header_tooltip("InterpolationSection/InterpolationBody/LocalHeader", "Local interpolation can trade responsiveness for stability during corrections.")
+	_set_header_tooltip("InterpolationSection/InterpolationBody/RemoteHeader", "Remote interpolation smooths other players by rendering slightly in the past.")
+	_set_header_tooltip("InterpolationSection/InterpolationBody/CameraHeader", "Camera smoothing hides small correction bumps in view motion.")
+	net_graph.tooltip_text = "Blue = velocity reconcile usage, Orange = position reconcile usage. Higher values mean more correction activity."
+
+func _set_row_tooltip(path: String, text: String) -> void:
+	var node := _get_latency_node(path)
+	if not node:
+		return
+	var row: HBoxContainer = node as HBoxContainer
+	if not row:
+		return
+	row.tooltip_text = text
+	for child in row.get_children():
+		if child is Control:
+			var control: Control = child
+			control.tooltip_text = text
+
+func _set_header_tooltip(path: String, text: String) -> void:
+	var node := _get_latency_node(path)
+	if not node:
+		return
+	var label: Label = node as Label
+	if label:
+		label.tooltip_text = text
+
+func _get_latency_node(relative_path: String) -> Node:
+	var full_path := "LatencyPanel/Scroll/LatencyVBox/" + relative_path
+	return get_node_or_null(full_path)
 
 func _get_bootstrap() -> NetworkBootstrap:
 	var nodes: Array[Node] = get_tree().get_nodes_in_group("network_bootstrap")
