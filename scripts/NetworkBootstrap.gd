@@ -12,6 +12,12 @@ extends Node3D
 @export var loss_percent: float = 0.0
 @export var input_delay_ticks: int = 0
 @export var ping_interval_ms: int = 1000
+@export var bot_bounds_min: Vector2 = Vector2(-8.0, -8.0)
+@export var bot_bounds_max: Vector2 = Vector2(8.0, 8.0)
+@export var bot_history_size: int = 120
+@export var bot_red_rtt_ms: int = 120
+@export var bot_green_rtt_ms: int = 40
+@export var bot_turn_interval: float = 1.0
 
 var ready_peers: Dictionary = {}
 var peer_inputs: Dictionary = {}
@@ -29,6 +35,11 @@ var last_ping_ms: int = 0
 var ping_seq: int = 0
 var ping_out_queue: Array[Dictionary] = []
 var ping_response_queue: Array[Dictionary] = []
+var bot_dirs: Dictionary = {}
+var bot_rtt: Dictionary = {}
+var bot_history: Dictionary = {}
+var bot_turn_timer: Dictionary = {}
+var bot_configs: Array[Dictionary] = []
 
 func _ready() -> void:
 	add_to_group("network_bootstrap")
@@ -85,6 +96,7 @@ func _start_server() -> void:
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 	_spawn_player(multiplayer.get_unique_id())
+	_spawn_bots()
 
 func _start_client() -> void:
 	var peer: ENetMultiplayerPeer = ENetMultiplayerPeer.new()
@@ -106,11 +118,14 @@ func _server_tick(current_tick: int) -> void:
 		}
 
 	for player in _get_players():
-		var entry: Dictionary = _get_peer_input(player.peer_id)
-		var input_dir: Vector2 = entry["input"]
-		var yaw: float = entry["yaw"]
-		player.rotation.y = yaw
-		player.tick_move(input_dir, tick_delta)
+		if player.is_bot:
+			_update_bot(player)
+		else:
+			var entry: Dictionary = _get_peer_input(player.peer_id)
+			var input_dir: Vector2 = entry["input"]
+			var yaw: float = entry["yaw"]
+			player.rotation.y = yaw
+			player.tick_move(input_dir, tick_delta)
 
 	_send_snapshot(current_tick)
 
@@ -153,12 +168,21 @@ func _flush_send_queue(current_tick: int) -> void:
 
 func _send_snapshot(current_tick: int) -> void:
 	var player_states: Array[Dictionary] = []
+	var now: int = Time.get_ticks_msec()
 	for player in _get_players():
+		var pos: Vector3 = player.global_position
+		var vel: Vector3 = player.velocity
+		var yaw: float = player.rotation.y
+		if player.is_bot and bot_rtt.has(player.peer_id):
+			var sample := _sample_bot_history(player.peer_id, now - int(bot_rtt[player.peer_id]) / 2)
+			pos = sample["pos"]
+			vel = sample["vel"]
+			yaw = sample["yaw"]
 		player_states.append({
 			"id": player.peer_id,
-			"pos": player.global_position,
-			"vel": player.velocity,
-			"yaw": player.rotation.y
+			"pos": pos,
+			"vel": vel,
+			"yaw": yaw
 		})
 	var cube_states: Array[Dictionary] = []
 	for cube in _get_cubes():
@@ -183,6 +207,10 @@ func _on_peer_connected(peer_id: int) -> void:
 			if id == peer_id:
 				continue
 			spawn_player.rpc_id(peer_id, id)
+		for bot in bot_configs:
+			var bot_id: int = bot["id"]
+			spawn_player.rpc_id(peer_id, bot_id)
+			configure_bot.rpc_id(peer_id, bot_id, bot["color"])
 
 func _on_peer_disconnected(peer_id: int) -> void:
 	if multiplayer.is_server():
@@ -192,13 +220,17 @@ func _on_peer_disconnected(peer_id: int) -> void:
 		peer_last_tick.erase(peer_id)
 
 func _spawn_player(peer_id: int) -> void:
+	_spawn_player_local(peer_id)
 	spawn_player.rpc(peer_id)
 
 func _despawn_player(peer_id: int) -> void:
 	despawn_player.rpc(peer_id)
 
-@rpc("authority", "reliable", "call_local")
+@rpc("authority", "reliable")
 func spawn_player(peer_id: int) -> void:
+	_spawn_player_local(peer_id)
+
+func _spawn_player_local(peer_id: int) -> PlayerController:
 	var player: PlayerController = player_scene.instantiate()
 	player.name = "Player_%s" % peer_id
 	player.peer_id = peer_id
@@ -211,6 +243,7 @@ func spawn_player(peer_id: int) -> void:
 	player.global_position = Vector3(x, 1.0, z)
 	if not multiplayer.is_server() and peer_id == 1:
 		client_ready.rpc_id(1)
+	return player
 
 @rpc("authority", "reliable", "call_local")
 func despawn_player(peer_id: int) -> void:
@@ -392,6 +425,103 @@ func _get_peer_input(peer_id: int) -> Dictionary:
 	if player:
 		yaw = player.rotation.y
 	return {"input": Vector2.ZERO, "yaw": yaw, "tick": 0}
+
+func _spawn_bots() -> void:
+	bot_configs = [
+		{"id": -1, "color": Color(1.0, 0.2, 0.2), "rtt": bot_red_rtt_ms},
+		{"id": -2, "color": Color(0.2, 1.0, 0.2), "rtt": bot_green_rtt_ms}
+	]
+	for bot in bot_configs:
+		_spawn_bot(bot["id"], bot["color"], bot["rtt"])
+		spawn_player.rpc(bot["id"])
+		configure_bot.rpc(bot["id"], bot["color"])
+
+func _spawn_bot(bot_id: int, color: Color, rtt_ms: int) -> void:
+	var player: PlayerController = _spawn_player_local(bot_id)
+	player.name = "Bot_%s" % bot_id
+	player.is_bot = true
+	player.call_deferred("set_body_color", color)
+	bot_dirs[bot_id] = Vector2(rng.randf_range(-1.0, 1.0), rng.randf_range(-1.0, 1.0)).normalized()
+	bot_rtt[bot_id] = rtt_ms
+	bot_history[bot_id] = []
+	bot_turn_timer[bot_id] = 0.0
+
+@rpc("authority", "reliable", "call_local")
+func configure_bot(peer_id: int, color: Color) -> void:
+	var player := _get_player(peer_id)
+	if not player:
+		return
+	player.is_bot = true
+	player.call_deferred("set_body_color", color)
+
+func _update_bot(player: PlayerController) -> void:
+	var dir: Vector2 = bot_dirs.get(player.peer_id, Vector2(1.0, 0.0))
+	var pos: Vector3 = player.global_position
+	var timer: float = float(bot_turn_timer.get(player.peer_id, 0.0))
+	timer += tick_delta
+	if timer >= bot_turn_interval:
+		timer = 0.0
+		var angle: float = rng.randf_range(-PI, PI)
+		dir = Vector2(cos(angle), sin(angle))
+		bot_dirs[player.peer_id] = dir
+	bot_turn_timer[player.peer_id] = timer
+	if pos.x <= bot_bounds_min.x:
+		dir.x = abs(dir.x)
+	elif pos.x >= bot_bounds_max.x:
+		dir.x = -abs(dir.x)
+	if pos.z <= bot_bounds_min.y:
+		dir.y = abs(dir.y)
+	elif pos.z >= bot_bounds_max.y:
+		dir.y = -abs(dir.y)
+	if dir.length() < 0.01:
+		dir = Vector2(1.0, 0.0)
+	dir = dir.normalized()
+	bot_dirs[player.peer_id] = dir
+	var yaw: float = atan2(-dir.x, -dir.y)
+	player.rotation.y = yaw
+	player.tick_move(Vector2(0.0, 1.0), tick_delta)
+	_record_bot_history(player)
+
+func _record_bot_history(player: PlayerController) -> void:
+	var list: Array = bot_history.get(player.peer_id, [])
+	list.append({
+		"time_ms": Time.get_ticks_msec(),
+		"pos": player.global_position,
+		"vel": player.velocity,
+		"yaw": player.rotation.y
+	})
+	if list.size() > bot_history_size:
+		list.pop_front()
+	bot_history[player.peer_id] = list
+
+func _sample_bot_history(bot_id: int, target_time_ms: int) -> Dictionary:
+	var list: Array = bot_history.get(bot_id, [])
+	if list.size() == 0:
+		return {
+			"pos": Vector3.ZERO,
+			"vel": Vector3.ZERO,
+			"yaw": 0.0
+		}
+	if list.size() == 1:
+		return list[0]
+	while list.size() >= 2 and list[1]["time_ms"] <= target_time_ms:
+		list.pop_front()
+	bot_history[bot_id] = list
+	if list.size() == 1:
+		return list[0]
+	var s0: Dictionary = list[0]
+	var s1: Dictionary = list[1]
+	var t0: int = s0["time_ms"]
+	var t1: int = s1["time_ms"]
+	if t1 <= t0:
+		return s1
+	var alpha: float = float(target_time_ms - t0) / float(t1 - t0)
+	alpha = clampf(alpha, 0.0, 1.0)
+	return {
+		"pos": s0["pos"].lerp(s1["pos"], alpha),
+		"vel": s0["vel"].lerp(s1["vel"], alpha),
+		"yaw": lerp_angle(float(s0["yaw"]), float(s1["yaw"]), alpha)
+	}
 
 @rpc("any_peer", "reliable")
 func ping_request(client_time_ms: int, seq: int) -> void:

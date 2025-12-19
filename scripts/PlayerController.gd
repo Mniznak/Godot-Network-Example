@@ -11,6 +11,7 @@ extends CharacterBody3D
 @export var velocity_correction: float = 0.25
 @export var velocity_deadzone: float = 0.1
 @export var position_deadzone: float = 0.3
+@export var is_bot: bool = false
 @export var reconcile_velocity_blend: float = 0.5
 @export var spring_frequency: float = 6.0
 @export var spring_damping: float = 1.0
@@ -26,6 +27,7 @@ extends CharacterBody3D
 @export var max_snapshots: int = 32
 @export var show_server_ghost: bool = true
 @onready var camera: Camera3D = $Camera3D
+@onready var mesh_instance: MeshInstance3D = $PlayerMesh
 
 var peer_id: int = 0
 var server_position: Vector3 = Vector3.ZERO
@@ -187,6 +189,11 @@ func _apply_authority() -> void:
 
 func _is_local_player() -> bool:
 	return multiplayer.get_unique_id() == peer_id
+
+func set_body_color(color: Color) -> void:
+	var material: StandardMaterial3D = StandardMaterial3D.new()
+	material.albedo_color = color
+	mesh_instance.material_override = material
 
 func _is_console_open() -> bool:
 	var nodes: Array[Node] = get_tree().get_nodes_in_group("dev_console")
