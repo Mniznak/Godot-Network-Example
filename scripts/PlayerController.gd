@@ -132,6 +132,7 @@ func apply_snapshot(pos: Vector3, vel: Vector3, yaw: float) -> void:
 	has_server_position = true
 	if not _is_local_player():
 		rotation.y = server_yaw
+	# Buffer snapshots for interpolation (remote players) and ghost display (local).
 	snapshot_buffer.append({"time_ms": Time.get_ticks_msec(), "pos": pos})
 	if snapshot_buffer.size() > max_snapshots:
 		snapshot_buffer.pop_front()
@@ -148,18 +149,22 @@ func reconcile_from_server(pos: Vector3, vel: Vector3, yaw: float, ack_tick: int
 	vel_reconcile_ratio = 0.0
 	pos_reconcile_ratio = 0.0
 	if error_len <= vel_deadzone:
+		# Drift is tiny: accept server state and drop any inputs the server already processed.
 		return _prune_history(history, ack_tick)
 	if error_len <= pos_deadzone:
+		# Small drift: blend velocity toward server, but keep position to avoid visible snaps.
 		vel_reconcile_ratio = clampf(error_len / max(pos_deadzone, 0.001), 0.0, 1.0)
 		velocity = velocity.lerp(vel, reconcile_velocity_blend)
 		return _prune_history(history, ack_tick)
 	if error_len >= snap_threshold:
+		# Large drift: snap to server state, then discard acked inputs.
 		pos_reconcile_ratio = 1.0
 		global_position = pos
 		velocity = vel
 		rotation.y = yaw
 		correction_velocity = Vector3.ZERO
 		return _prune_history(history, ack_tick)
+	# Moderate drift: rewind to server state, then replay un-acked inputs to rebuild prediction.
 	pos_reconcile_ratio = clampf((error_len - pos_deadzone) / max(snap_threshold - pos_deadzone, 0.001), 0.0, 1.0)
 	global_position = pos
 	velocity = velocity.lerp(vel, reconcile_velocity_blend)
@@ -173,6 +178,7 @@ func reconcile_from_server(pos: Vector3, vel: Vector3, yaw: float, ack_tick: int
 		remaining.append(entry)
 		var input_dir: Vector2 = entry["input"]
 		var entry_yaw: float = entry["yaw"]
+		# Re-apply inputs in original order to reconstruct the predicted state.
 		simulate_input(input_dir, entry_yaw, delta)
 	return remaining
 

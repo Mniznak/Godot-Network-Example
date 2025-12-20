@@ -156,20 +156,6 @@ text = "0.1"
 [node name="PositionHeader" type="Label" parent="LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody"]
 text = "Position"
 
-[node name="MaxCorrectionRow" type="HBoxContainer" parent="LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody"]
-
-[node name="MaxCorrectionLabel" type="Label" parent="LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/MaxCorrectionRow"]
-text = "Max step"
-
-[node name="MaxCorrectionSlider" type="HSlider" parent="LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/MaxCorrectionRow"]
-size_flags_horizontal = 3
-max_value = 2.0
-step = 0.05
-value = 0.4
-
-[node name="MaxCorrectionValue" type="Label" parent="LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/MaxCorrectionRow"]
-text = "0.4"
-
 [node name="PosDeadzoneRow" type="HBoxContainer" parent="LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody"]
 
 [node name="PosDeadzoneLabel" type="Label" parent="LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/PosDeadzoneRow"]
@@ -184,6 +170,20 @@ value = 0.3
 [node name="PosDeadzoneValue" type="Label" parent="LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/PosDeadzoneRow"]
 text = "0.3"
 
+[node name="MaxCorrectionRow" type="HBoxContainer" parent="LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody"]
+
+[node name="MaxCorrectionLabel" type="Label" parent="LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/MaxCorrectionRow"]
+text = "Max step"
+
+[node name="MaxCorrectionSlider" type="HSlider" parent="LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/MaxCorrectionRow"]
+size_flags_horizontal = 3
+max_value = 2.0
+step = 0.05
+value = 0.4
+
+[node name="MaxCorrectionValue" type="Label" parent="LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/MaxCorrectionRow"]
+text = "0.4"
+
 [node name="SnapThresholdRow" type="HBoxContainer" parent="LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody"]
 
 [node name="SnapThresholdLabel" type="Label" parent="LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/SnapThresholdRow"]
@@ -197,6 +197,24 @@ value = 3.0
 
 [node name="SnapThresholdValue" type="Label" parent="LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/SnapThresholdRow"]
 text = "3.0"
+
+[node name="SpringHeader" type="Label" parent="LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody"]
+text = "Spring"
+
+[node name="SpringRow" type="HBoxContainer" parent="LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody"]
+
+[node name="SpringLabel" type="Label" parent="LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/SpringRow"]
+text = "Spring Hz"
+
+[node name="SpringSlider" type="HSlider" parent="LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/SpringRow"]
+size_flags_horizontal = 3
+min_value = 1.0
+max_value = 20.0
+step = 0.5
+value = 6.0
+
+[node name="SpringValue" type="Label" parent="LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/SpringRow"]
+text = "6.0"
 
 [node name="InterpolationSection" type="VBoxContainer" parent="LatencyPanel/Scroll/LatencyVBox"]
 

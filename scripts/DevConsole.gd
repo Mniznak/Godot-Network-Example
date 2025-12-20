@@ -28,6 +28,8 @@ extends CanvasLayer
 @onready var other_toggle: Button = $LatencyPanel/Scroll/LatencyVBox/OtherSection/OtherToggle
 @onready var max_correction_slider: HSlider = $LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/MaxCorrectionRow/MaxCorrectionSlider
 @onready var max_correction_value: Label = $LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/MaxCorrectionRow/MaxCorrectionValue
+@onready var spring_freq_slider: HSlider = $LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/SpringRow/SpringSlider
+@onready var spring_freq_value: Label = $LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/SpringRow/SpringValue
 @onready var snap_threshold_slider: HSlider = $LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/SnapThresholdRow/SnapThresholdSlider
 @onready var snap_threshold_value: Label = $LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/SnapThresholdRow/SnapThresholdValue
 @onready var reconcile_velocity_slider: HSlider = $LatencyPanel/Scroll/LatencyVBox/ReconcileSection/ReconcileBody/ReconcileVelocityRow/ReconcileVelocitySlider
@@ -103,6 +105,7 @@ func _wire_latency_controls() -> void:
 	jitter_slider.value_changed.connect(_on_settings_changed)
 	loss_slider.value_changed.connect(_on_settings_changed)
 	max_correction_slider.value_changed.connect(_on_settings_changed)
+	spring_freq_slider.value_changed.connect(_on_settings_changed)
 	snap_threshold_slider.value_changed.connect(_on_settings_changed)
 	reconcile_velocity_slider.value_changed.connect(_on_settings_changed)
 	camera_smooth_slider.value_changed.connect(_on_settings_changed)
@@ -145,6 +148,7 @@ func _update_latency_labels() -> void:
 
 func _update_correction_labels() -> void:
 	max_correction_value.text = str(snappedf(max_correction_slider.value, 0.05))
+	spring_freq_value.text = str(snappedf(spring_freq_slider.value, 0.5))
 	snap_threshold_value.text = str(snappedf(snap_threshold_slider.value, 0.1))
 	reconcile_velocity_value.text = str(snappedf(reconcile_velocity_slider.value, 0.05))
 
@@ -182,10 +186,12 @@ func _apply_latency_settings() -> void:
 
 func _apply_correction_settings() -> void:
 	var max_step: float = float(max_correction_slider.value)
+	var spring_hz: float = float(spring_freq_slider.value)
 	var snap_dist: float = float(snap_threshold_slider.value)
 	var vel_blend: float = float(reconcile_velocity_slider.value)
 	for player in _get_players():
 		player.max_correction_per_tick = max_step
+		player.spring_frequency = spring_hz
 		player.snap_threshold = snap_dist
 		player.reconcile_velocity_blend = vel_blend
 
@@ -248,6 +254,7 @@ func _sync_correction_from_player() -> void:
 		return
 	var player: PlayerController = players[0]
 	max_correction_slider.value = player.max_correction_per_tick
+	spring_freq_slider.value = player.spring_frequency
 	snap_threshold_slider.value = player.snap_threshold
 	reconcile_velocity_slider.value = player.reconcile_velocity_blend
 	_update_correction_labels()
@@ -337,6 +344,7 @@ func _apply_tooltips() -> void:
 	_set_row_tooltip("ReconcileSection/ReconcileBody/ReconcileVelocityRow", "How much we blend toward server velocity when we reconcile. Higher values correct speed quickly but can feel snappy.")
 	_set_row_tooltip("ReconcileSection/ReconcileBody/VelDeadzoneRow", "Position error threshold for velocity-only correction. If position drift exceeds this (but is below Pos deadzone), we adjust velocity without snapping position.")
 	_set_row_tooltip("ReconcileSection/ReconcileBody/MaxCorrectionRow", "Caps correction distance per tick. Prevents large visible jumps by spreading correction over time.")
+	_set_row_tooltip("ReconcileSection/ReconcileBody/SpringRow", "Spring frequency for smoothing corrections. Higher values pull you toward the server faster but can overshoot without damping.")
 	_set_row_tooltip("ReconcileSection/ReconcileBody/PosDeadzoneRow", "Position error threshold for full reconciliation. Above this, we correct position (rewind/replay) instead of just blending velocity.")
 	_set_row_tooltip("ReconcileSection/ReconcileBody/SnapThresholdRow", "Maximum tolerated error. Beyond this, we snap to the server to avoid runaway divergence.")
 	_set_row_tooltip("InterpolationSection/InterpolationBody/LocalInterpRow", "Local interpolation delay. Smaller values feel more responsive but can expose jitter.")
@@ -346,6 +354,7 @@ func _apply_tooltips() -> void:
 	_set_row_tooltip("MovementSection/MovementBody/DecelRow", "How quickly velocity slows down. Higher decel reduces drift but can feel abrupt.")
 	_set_header_tooltip("ReconcileSection/ReconcileBody/VelocityHeader", "Velocity reconciliation corrects speed/direction without hard position snaps.")
 	_set_header_tooltip("ReconcileSection/ReconcileBody/PositionHeader", "Position reconciliation corrects accumulated error by snapping or replaying inputs.")
+	_set_header_tooltip("ReconcileSection/ReconcileBody/SpringHeader", "Spring smoothing pulls the client toward the server between snapshots.")
 	_set_header_tooltip("InterpolationSection/InterpolationBody/LocalHeader", "Local interpolation can trade responsiveness for stability during corrections.")
 	_set_header_tooltip("InterpolationSection/InterpolationBody/RemoteHeader", "Remote interpolation smooths other players by rendering slightly in the past.")
 	_set_header_tooltip("InterpolationSection/InterpolationBody/CameraHeader", "Camera smoothing hides small correction bumps in view motion.")

@@ -1,8 +1,12 @@
-[gd_scene load_steps=10 format=3 uid="uid://cvdpicy6lrw0p"]
+[gd_scene load_steps=12 format=3 uid="uid://cvdpicy6lrw0p"]
 
 [ext_resource type="Script" uid="uid://cmuanqpy7b2uq" path="res://scripts/NetworkBootstrap.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/DevConsole.tscn" id="2"]
 [ext_resource type="Script" uid="uid://ceaii8bwe1ote" path="res://scripts/MovingCube.gd" id="3"]
+[ext_resource type="Texture2D" uid="uid://db2to0nr5lf6f" path="res://assets/texture_07.png" id="3_rarhs"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_vcsgt"]
+albedo_texture = ExtResource("3_rarhs")
 
 [sub_resource type="BoxMesh" id="3"]
 size = Vector3(20, 0.5, 20)
@@ -35,6 +39,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.25, 0)
 
 [node name="FloorMesh" type="MeshInstance3D" parent="Floor"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1.5, 0, 0, 0)
+material_override = SubResource("StandardMaterial3D_vcsgt")
 mesh = SubResource("3")
 
 [node name="FloorCollision" type="CollisionShape3D" parent="Floor"]

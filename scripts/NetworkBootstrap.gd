@@ -123,6 +123,7 @@ func _server_tick(current_tick: int) -> void:
 		if player.is_bot:
 			_update_bot(player)
 		else:
+			# Authoritative simulation: server applies the latest input per peer for this tick.
 			var entry: Dictionary = _get_peer_input(player.peer_id)
 			var input_dir: Vector2 = entry["input"]
 			var yaw: float = entry["yaw"]
@@ -135,6 +136,7 @@ func _client_tick(current_tick: int) -> void:
 	var local_player: PlayerController = _get_local_player()
 	if not local_player:
 		return
+	# If input delay is enabled, apply any queued inputs whose ticks have matured.
 	_flush_pending_inputs(current_tick, local_player)
 	var input_dir: Vector2 = local_player.build_input()
 	var yaw: float = local_player.get_yaw()
@@ -143,10 +145,13 @@ func _client_tick(current_tick: int) -> void:
 		"input": input_dir,
 		"yaw": yaw
 	}
+	# Store every local input so we can replay un-acked inputs after reconciliation.
 	input_history.append(entry)
+	# Send to server immediately (authority uses this to simulate this tick).
 	server_receive_input.rpc_id(1, current_tick, input_dir, yaw)
 	if input_delay_ticks > 0:
 		var apply_at: int = current_tick + input_delay_ticks
+		# Delay local prediction while still sending to the server right away.
 		pending_inputs.append({
 			"tick": current_tick,
 			"input": input_dir,
@@ -154,6 +159,7 @@ func _client_tick(current_tick: int) -> void:
 			"apply_at": apply_at
 		})
 	else:
+		# Immediate local prediction when no delay is configured.
 		local_player.simulate_input(input_dir, yaw, tick_delta)
 
 func _flush_pending_inputs(current_tick: int, local_player: PlayerController) -> void:
@@ -176,7 +182,8 @@ func _send_snapshot(current_tick: int) -> void:
 		var vel: Vector3 = player.velocity
 		var yaw: float = player.rotation.y
 		if player.is_bot and bot_rtt.has(player.peer_id):
-			var sample := _sample_bot_history(player.peer_id, now - int(bot_rtt[player.peer_id]) / 2)
+			var one_way: int = int(floor(float(bot_rtt[player.peer_id]) * 0.5))
+			var sample := _sample_bot_history(player.peer_id, now - one_way)
 			pos = sample["pos"]
 			vel = sample["vel"]
 			yaw = sample["yaw"]
@@ -196,6 +203,7 @@ func _send_snapshot(current_tick: int) -> void:
 		var ack_tick: int = 0
 		if peer_last_tick.has(peer_id):
 			ack_tick = int(peer_last_tick[peer_id])
+		# The ack tells the client which inputs the server has processed so it can prune history.
 		_queue_snapshot(peer_id, current_tick, ack_tick, player_states, cube_states)
 
 func _on_peer_connected(peer_id: int) -> void:
@@ -442,13 +450,13 @@ func _spawn_bots() -> void:
 		spawn_player.rpc(bot["id"])
 		configure_bot.rpc(bot["id"], bot["color"])
 
-func _spawn_bot(bot_id: int, color: Color, rtt_ms: int) -> void:
+func _spawn_bot(bot_id: int, color: Color, bot_rtt_ms: int) -> void:
 	var player: PlayerController = _spawn_player_local(bot_id)
 	player.name = "Bot_%s" % bot_id
 	player.is_bot = true
 	player.call_deferred("set_body_color", color)
 	bot_dirs[bot_id] = Vector2(rng.randf_range(-1.0, 1.0), rng.randf_range(-1.0, 1.0)).normalized()
-	bot_rtt[bot_id] = rtt_ms
+	bot_rtt[bot_id] = bot_rtt_ms
 	bot_history[bot_id] = []
 	bot_turn_timer[bot_id] = 0.0
 
